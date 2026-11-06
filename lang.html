@@ -158,7 +158,7 @@ details.d summary{cursor:pointer; font-weight:700; font-size:12.5px; color:var(-
       <button class="chip xong" type="button" data-hud="bang"><b id="k-xong">0</b> hoàn thành</button>
       <button class="chip nut" type="button" data-hud="tongquan">Tổng quan</button>
       <button class="chip" id="muse-chip" type="button" data-hud="vua">🧠 Muse: …</button>
-      <a class="chip" id="arena-link" href="/san-choi" style="text-decoration:none; display:none">🎪 Sân chơi</a>
+      <a class="chip" id="arena-link" href="/san-choi" data-muse-href="/san-choi" style="text-decoration:none; display:none">🎪 Sân chơi</a>
     </div>
   </div>
 
@@ -257,11 +257,23 @@ const acctLine = k => '<p class="m"><span class="dot ' + (MUSE.tabs.indexOf(k) >
 const boName = k => (BO_MAP[k] ? BO_MAP[k].ten : (k === 'noicac' || k === '' || !k ? 'Bệ Hạ' : '?'));
 const viecOf = s => { const a = String(s.ask || ''); if(s.kind === 'hoi') return a.split('\n')[0].replace(/^.*?hỏi bạn:\s*/, '').trim(); const i = a.indexOf('\n'); const j = a.indexOf('\n\n', i + 1); return (i >= 0 ? a.slice(i + 1, j > 0 ? j : undefined) : a).replace(/\s+/g, ' ').trim(); };
 const ON_ARTIFACT = !!window.claude;   // bản đăng trên claude.ai: trình duyệt chặn mọi kết nối ra ngoài
-function museBases(){ return ON_ARTIFACT ? [] : (/^https?:$/.test(location.protocol) ? [''] : ['http://127.0.0.1:5000', 'http://localhost:5000']); }
+const MUSE_BASE = (typeof window.__MUSE_BASE__ === 'string' ? window.__MUSE_BASE__ : '');
+(function(){ var a=document.getElementById('arena-link'); if(a){ a.setAttribute('href', MUSE_BASE + '/san-choi'); } })();
+function museBases(){
+  if(ON_ARTIFACT) return [];
+  if(/^https?:$/.test(location.protocol)) return [MUSE_BASE];  // same origin under /muse
+  return [MUSE_BASE || 'http://127.0.0.1:5000', 'http://localhost:5000'];
+}
+function museLoginNext(){
+  // next is path relative to the Flask app (no /muse), so login redirect stays inside Passenger mount
+  let p = location.pathname || '/';
+  if(MUSE_BASE && p.startsWith(MUSE_BASE)) p = p.slice(MUSE_BASE.length) || '/';
+  return p;
+}
 async function museGet(base, path, opt){
   if(ON_ARTIFACT) throw new Error('claude.ai chặn kết nối ngoài');
   const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 2500);
-  try { const r = await fetch(base + path, Object.assign({signal:ctl.signal}, opt || {})); if(r.status === 401){ location.href = '/login?next=' + encodeURIComponent(location.pathname); } return {ok:r.ok, status:r.status, data:await r.json()}; }
+  try { const r = await fetch(base + path, Object.assign({signal:ctl.signal}, opt || {})); if(r.status === 401){ location.href = MUSE_BASE + '/login?next=' + encodeURIComponent(museLoginNext()); } return {ok:r.ok, status:r.status, data:await r.json()}; }
   finally { clearTimeout(to); }
 }
 async function musePoll(){
@@ -466,24 +478,24 @@ try { if(!window.claude && /^https?:$/.test(location.protocol)) document.getElem
 /* Trên tên miền riêng: dữ liệu làng nằm ở server (cùng địa chỉ). Giao diện giống cơ sở dữ liệu của claude.ai để phần còn lại không phải đổi. */
 function serverDb(){
   const J = {'Content-Type':'application/json'};
-  const need = r => { if(r.status === 401){ location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('login'); } return r; };
+  const need = r => { if(r.status === 401){ location.href = MUSE_BASE + '/login?next=' + encodeURIComponent(museLoginNext()); throw new Error('login'); } return r; };
   const col = name => ({
     orderBy(){ return this; }, limit(){ return this; },
     onSnapshot(cb, err){
       let last = '';
       const tick = async () => {
         try {
-          const r = need(await fetch('/api/db/' + name)), arr = await r.json(), h = JSON.stringify(arr);
+          const r = need(await fetch(MUSE_BASE + '/api/db/' + name)), arr = await r.json(), h = JSON.stringify(arr);
           if(h !== last){ last = h; cb({docs:arr.map(o => ({id:o.id, data:() => { const c = Object.assign({}, o); delete c.id; return c; }}))}); }
         } catch(e){ if(err) err(e); }
         setTimeout(tick, 2500);
       };
       tick();
     },
-    async add(v){ const r = need(await fetch('/api/db/' + name, {method:'POST', headers:J, body:JSON.stringify(v)})); const o = await r.json(); return {id:o.id}; },
+    async add(v){ const r = need(await fetch(MUSE_BASE + '/api/db/' + name, {method:'POST', headers:J, body:JSON.stringify(v)})); const o = await r.json(); return {id:o.id}; },
     doc: id => ({
-      update: async v => need(await fetch('/api/db/' + name + '/' + id, {method:'PATCH', headers:J, body:JSON.stringify(v)})),
-      delete: async () => need(await fetch('/api/db/' + name + '/' + id, {method:'DELETE'}))
+      update: async v => need(await fetch(MUSE_BASE + '/api/db/' + name + '/' + id, {method:'PATCH', headers:J, body:JSON.stringify(v)})),
+      delete: async () => need(await fetch(MUSE_BASE + '/api/db/' + name + '/' + id, {method:'DELETE'}))
     })
   });
   return {collection: col};

@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script>window.__MUSE_BASE__={{ (BASE or "")|tojson }};</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Triều Đình Muse — Lục Bộ</title>
@@ -23,12 +25,12 @@
   </div>
   <div class="flex items-center gap-2">
     <div id="statusBadge" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Đang chờ tab muse.ai</div>
-    <a href="/san-choi" class="px-3 py-1.5 text-xs rounded-lg bg-fuchsia-700 hover:bg-fuchsia-600 text-white">🎪 Sân Chơi</a>
-    <a href="/connect" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">➕ Nối trình duyệt</a>
+    <a href="{{ BASE }}/san-choi" class="px-3 py-1.5 text-xs rounded-lg bg-fuchsia-700 hover:bg-fuchsia-600 text-white">🎪 Sân Chơi</a>
+    <a href="{{ BASE }}/connect" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">➕ Nối trình duyệt</a>
     <button onclick="openTabs()" class="px-3 py-1.5 text-xs rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white">🔗 Tab Muse</button>
     <button onclick="openBrains()" class="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">🧠 Bộ não</button>
-    <a href="/lang" class="px-3 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600 text-white">🏯 Làng 3D</a>
-    <a href="/chat" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">Chat thường</a>
+    <a href="{{ BASE }}/lang" class="px-3 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600 text-white">🏯 Làng 3D</a>
+    <a href="{{ BASE }}/chat" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">Chat thường</a>
   </div>
 </header>
 
@@ -89,6 +91,7 @@
 </div>
 
 <script>
+const BASE = window.__MUSE_BASE__ || '';
 const AG = {noicac:['Bệ Hạ','#f87171'],chu:['Chủ Nhân','#fbbf24'],cong:['Công Bộ','#60a5fa'],le:['Lễ Bộ','#f472b6'],ho:['Hộ Bộ','#34d399'],binh:['Binh Bộ','#fb923c'],hinh:['Hình Bộ','#c084fc'],lai:['Lại Bộ','#fbbf24'],vua:['Chủ Nhân','#fbbf24']};
 const KIND = {giao:'giao việc',hoi:'được hỏi',tra_loi:'hoàn thiện',chia_viec:'chia việc',tong_hop:'tổng hợp'};
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -99,7 +102,7 @@ document.getElementById('to').innerHTML = '<option value="auto">Bệ Hạ tự c
 
 async function status(){
   try{
-    const d = await (await fetch('/api/status')).json();
+    const d = await (await fetch(BASE + '/api/status')).json();
     const b = document.getElementById('statusBadge');
     b.textContent = d.bridge_connected ? 'Web Muse: ' + (d.tab_count || 1) + ' tab đã nối 🟢' : 'Chờ tab muse.ai 🟡';
     b.className = 'px-3 py-1.5 rounded-lg text-xs font-medium border ' + (d.bridge_connected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20');
@@ -111,7 +114,7 @@ async function ask(e){
   const err = document.getElementById('askErr'); err.classList.add('hidden');
   const btn = document.getElementById('askBtn'); btn.disabled = true;
   try{
-    const r = await fetch('/api/court/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,to:document.getElementById('to').value})});
+    const r = await fetch(BASE + '/api/court/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,to:document.getElementById('to').value})});
     const d = await r.json();
     if(!r.ok){ err.textContent = d.error || 'Lỗi'; err.classList.remove('hidden'); }
     else { document.getElementById('q').value=''; sel = d.id; await load(true); }
@@ -120,14 +123,14 @@ async function ask(e){
 }
 async function clearAll(){
   if(!confirm('Hủy các chỉ dụ đang chạy và xóa toàn bộ lịch sử?')) return;
-  await fetch('/api/court/clear', {method:'POST'}); sel = null; openSteps.clear(); load(true);
+  await fetch(BASE + '/api/court/clear', {method:'POST'}); sel = null; openSteps.clear(); load(true);
 }
-async function cancelRun(id){ await fetch('/api/court/cancel/'+id,{method:'POST'}); load(true); }
+async function cancelRun(id){ await fetch(BASE + '/api/court/cancel/'+id,{method:'POST'}); load(true); }
 
 async function load(force){
   try{
-    runs = await (await fetch('/api/court/runs')).json();
-    try{ tabsNow = await (await fetch('/api/court/tabs')).json(); }catch(e){}
+    runs = await (await fetch(BASE + '/api/court/runs')).json();
+    try{ tabsNow = await (await fetch(BASE + '/api/court/tabs')).json(); }catch(e){}
     const h = JSON.stringify([runs, tabsNow]);
     if(!force && h === lastHash) return;
     lastHash = h;
@@ -185,7 +188,7 @@ function render(){
 }
 
 async function openBrains(){
-  brains = await (await fetch('/api/court/agents')).json();
+  brains = await (await fetch(BASE + '/api/court/agents')).json();
   document.getElementById('brainModal').classList.remove('hidden'); document.getElementById('brainModal').classList.add('flex');
   pickBrain(brainKey || brains[0].key);
 }
@@ -198,7 +201,7 @@ function pickBrain(k){
 }
 async function saveBrain(){
   const text = document.getElementById('brainText').value;
-  const r = await fetch('/api/court/brain/'+brainKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+  const r = await fetch(BASE + '/api/court/brain/'+brainKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
   if(r.ok){ brains.find(b=>b.key===brainKey).text = text; document.getElementById('brainMsg').textContent = 'Đã lưu ✓'; }
 }
 
@@ -210,7 +213,7 @@ function closeTabs(){ tabOpen = false; const m = document.getElementById('tabMod
 async function loadTabs(force){
   if(!tabOpen) return;
   if(!force && document.activeElement && document.getElementById('tabRows').contains(document.activeElement)) return;
-  try{ tabList = await (await fetch('/api/court/tabs')).json(); }catch(e){ return; }
+  try{ tabList = await (await fetch(BASE + '/api/court/tabs')).json(); }catch(e){ return; }
   document.getElementById('tabEmpty').classList.toggle('hidden', tabList.length > 0);
   document.getElementById('tabRows').innerHTML = tabList.map(t => `<tr class="border-t border-gray-800" data-id="${esc(t.id)}">
     <td class="py-2 pr-2"><input data-f="label" value="${esc(t.label)}" maxlength="40" class="w-40 bg-[#0e1422] border border-gray-700 rounded px-2 py-1"><div class="text-[10px] text-gray-600 mt-0.5">${esc(t.id)}</div></td>
@@ -224,16 +227,16 @@ async function loadTabs(force){
 document.getElementById('tabRows').addEventListener('change', async e => {
   const tr = e.target.closest('tr'); if(!tr) return; const f = e.target.dataset.f, id = tr.dataset.id; let body = {};
   if(f==='label') body.label = e.target.value; else if(f==='role') body.roles = Array.from(tr.querySelectorAll('input[data-f="role"]:checked')).map(x => x.value); else if(f==='limit') body.limit = e.target.value; else if(f==='paused') body.paused = e.target.checked; else return;
-  await fetch('/api/court/tab/'+encodeURIComponent(id), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); loadTabs(true);
+  await fetch(BASE + '/api/court/tab/'+encodeURIComponent(id), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); loadTabs(true);
 });
 document.getElementById('tabRows').addEventListener('click', async e => {
   const f = e.target.dataset.f, tr = e.target.closest('tr'); if(!tr) return; const id = encodeURIComponent(tr.dataset.id);
-  if(f==='flash') await fetch('/api/court/tab/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({flash:true})});
-  else if(f==='reset') await fetch('/api/court/tab/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reset_done:true})});
-  else if(f==='forget') await fetch('/api/court/tab/'+id+'/forget', {method:'POST'}); else return;
+  if(f==='flash') await fetch(BASE + '/api/court/tab/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({flash:true})});
+  else if(f==='reset') await fetch(BASE + '/api/court/tab/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reset_done:true})});
+  else if(f==='forget') await fetch(BASE + '/api/court/tab/'+id+'/forget', {method:'POST'}); else return;
   loadTabs(true);
 });
-async function autoRoles(){ await fetch('/api/court/tabs/auto', {method:'POST'}); loadTabs(true); }
+async function autoRoles(){ await fetch(BASE + '/api/court/tabs/auto', {method:'POST'}); loadTabs(true); }
 setInterval(() => loadTabs(false), 1500);
 setInterval(status, 2000); setInterval(()=>load(false), 1000); status(); load(true);
 </script>

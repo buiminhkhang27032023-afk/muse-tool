@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const session = require("express-session");
+const { base, pref } = require("./prefix");
 
 const HERE = path.dirname(path.dirname(__filename)); // gốc project node/
 const PUBLIC = process.env.MUSE_PUBLIC === "1";
@@ -84,7 +85,10 @@ function withDbLock(fn) {
 }
 
 function init(app) {
+  // Cookie name scoped so CRM session cookies on same host do not collide.
+  const cookiePath = base() || "/";
   app.use(session({
+    name: "muse_session",
     secret: SECRET,
     resave: false,
     saveUninitialized: false,
@@ -93,6 +97,7 @@ function init(app) {
       sameSite: "lax",
       secure: process.env.MUSE_HTTPS === "1",
       maxAge: 1000 * 60 * 60 * 24 * 30,
+      path: cookiePath,
     },
   }));
 
@@ -107,7 +112,7 @@ function init(app) {
     const tok = req.headers["x-muse-token"] || "";
     if ((req.session && req.session.ok) || (tok && timingSafeEqualStr(tok, BRIDGE_TOKEN))) return next();
     if (p.startsWith("/api/")) return res.status(401).json({ error: "Cần đăng nhập" });
-    return res.redirect("/login?next=" + encodeURIComponent(p));
+    return res.redirect(pref("/login") + "?next=" + encodeURIComponent(p));
   });
 
   app.all("/login", (req, res) => {
@@ -117,7 +122,7 @@ function init(app) {
       const pw = (req.body && req.body.password) || "";
       if (timingSafeEqualStr(pw, PASSWORD)) {
         req.session.ok = true;
-        return res.redirect(nxt);
+        return res.redirect(pref(nxt));
       }
       return setTimeout(() => {
         res.set("Content-Type", "text/html; charset=utf-8");
@@ -129,7 +134,7 @@ function init(app) {
   });
 
   app.get("/logout", (req, res) => {
-    req.session.destroy(() => res.redirect("/login"));
+    req.session.destroy(() => res.redirect(pref("/login")));
   });
 
   function col(name) {

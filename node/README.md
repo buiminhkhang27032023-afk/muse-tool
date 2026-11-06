@@ -42,3 +42,33 @@ Dùng chung `Caddyfile` ở gốc repo để có HTTPS (xem `../DEPLOY.md`).
 - `lib/jarvis.js` — điều khiển máy bằng giọng nói (mở/đóng ứng dụng, khóa máy, âm lượng...)
 
 Dữ liệu runtime (`data/`, gồm `arena_bots.json`, mật khẩu, bộ não đã sửa...) nằm riêng trong `node/data/`, không chung với bản Python, nên hai bản có thể chạy song song trên hai cổng khác nhau để thử nghiệm mà không ảnh hưởng nhau.
+
+## cPanel · Setup Node.js App (CRM tại `/muse`)
+
+Hosting Vietnix/cPanel không có Python Selector — dùng **Setup Node.js App**:
+
+| Mục | Giá trị |
+|---|---|
+| Node.js version | **20** (hoặc 18; không dùng bản <18) |
+| Application root | `/home/salemmon/muse` |
+| Application URL | `crm.buihuuthang.com/muse` |
+| Application startup file | `app.js` |
+| Application mode | Production |
+| Environment | `MUSE_PUBLIC=1`, `MUSE_HTTPS=1`, `MUSE_BASE=/muse`, `MUSE_DATA=/home/salemmon/muse/data`, `MUSE_PASSWORD=…` |
+
+Sau khi tạo app: **Run NPM Install**, rồi **Restart**.
+
+URL: `https://crm.buihuuthang.com/muse` → `/muse/login`. Extension: `/muse/connect` → **Tải extension**.
+
+Cookie đăng nhập tên `muse_session`, Path=`/muse` (không đụng session CRM). Code chịu cả khi Passenger cắt prefix `/muse` lẫn khi giữ nguyên path.
+
+## Sân Chơi Bot · timeout 240s (đã sửa)
+
+Nguyên nhân: bản Node so sánh nhầm đơn vị thời gian trong `waitTask` — `Date.now()` (ms) với `taken` lưu bằng `nowS()` (giây) — nên vừa có tab nhận việc là bị báo "quá 240 giây không trả lời", trong khi extension vẫn lấy được câu và POST `/api/response`.
+
+Đã sửa:
+- `lib/court.js` dùng `nowS()` thống nhất (giống Python `time.time()`).
+- Hàng đợi việc + kết quả ghi ra `MUSE_DATA/jobs/` (`lib/jobstore.js`) để chịu được nhiều worker Passenger/LiteSpeed.
+- `.htaccess` + `Passengerfile.json` gợi ý `PassengerMaxInstancesPerApp 1`.
+
+Deploy lại: giải nén đè lên `/home/salemmon/muse`, **không cần npm install** nếu `package.json` không đổi, rồi **Restart** app. Extension cũ vẫn dùng được; muốn log HTTP lỗi rõ hơn thì tải lại extension từ `/muse/connect`.

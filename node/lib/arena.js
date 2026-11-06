@@ -16,6 +16,7 @@ const { execFile } = require("child_process");
 const which = require("which");
 
 const court = require("./court");
+const { publicOrigin, sendHtmlFile, pref } = require("./prefix");
 
 const DATA = court.DATA;
 const BOTS_FILE = path.join(DATA, "arena_bots.json");
@@ -755,7 +756,7 @@ function init(app) {
     }
     const fname = crypto.randomBytes(8).toString("hex") + ext;
     fs.renameSync(f.path, path.join(UPLOAD_DIR, fname));
-    const url = req.protocol + "://" + req.get("host") + "/api/arena/upload/" + fname;
+    const url = publicOrigin(req) + "/api/arena/upload/" + fname;
     res.json({ url, kind: VID_EXT.includes(ext) ? "video" : "image" });
   });
 
@@ -825,7 +826,7 @@ function init(app) {
     const fake = {
       id: "test", topic: "Thử kết nối", messages: [],
       participants: [{ key: "bot:" + req.params.bid, name: b.name, provider: b.provider || "other" }],
-      status: "running", sentences: 1, base: req.protocol + "://" + req.get("host"),
+      status: "running", sentences: 1, base: publicOrigin(req),
     };
     const p = { key: "bot:" + req.params.bid, name: b.name, provider: b.provider || "other", kind: b.kind, persona: "" };
     try {
@@ -843,7 +844,7 @@ function init(app) {
     const d = req.body || {};
     try {
       const r = createRoom(d.topic || "", d.participants || [], d.max_turns, d.pause, d.sentences,
-        req.protocol + "://" + req.get("host"), d.raw !== undefined ? d.raw : true, d.intro,
+        publicOrigin(req), d.raw !== undefined ? d.raw : true, d.intro,
         d.unlimited || false, d.auto_pause_choices || false);
       res.json(roomView(r));
     } catch (e) {
@@ -941,7 +942,7 @@ function init(app) {
   });
 
   app.get("/san-choi", (req, res) => {
-    res.sendFile(path.join(court.ROOT, "templates", "arena.html"));
+    sendHtmlFile(res, path.join(court.ROOT, "templates", "arena.html"));
   });
 }
 

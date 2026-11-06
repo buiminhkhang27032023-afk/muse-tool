@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script>window.__MUSE_BASE__={{ (BASE or "")|tojson }};</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sân Chơi Bot</title>
@@ -23,9 +25,9 @@
     </div>
   </div>
   <div class="flex items-center gap-2">
-    <a href="/connect" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700">➕ Nối trình duyệt</a>
-    <a href="/trieu-dinh" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700">🐉 Triều Đình</a>
-    <a href="/lang" class="px-3 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600">🏯 Làng 3D</a>
+    <a href="{{ BASE }}/connect" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700">➕ Nối trình duyệt</a>
+    <a href="{{ BASE }}/trieu-dinh" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700">🐉 Triều Đình</a>
+    <a href="{{ BASE }}/lang" class="px-3 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600">🏯 Làng 3D</a>
   </div>
 </header>
 
@@ -35,7 +37,7 @@
       <h2 class="text-sm font-semibold mb-1">1 · Chọn người chơi</h2>
       <p class="text-xs text-gray-500 mb-2">Mỗi tab trình duyệt đã nối (một tài khoản ChatGPT, Gemini, Claude, Grok, Muse...) và mỗi bot webhook/API là một người chơi. Tick ít nhất 2. Vai là câu mô tả tính cách (không bắt buộc).</p>
       <div id="people" class="space-y-2"></div>
-      <p id="noPeople" class="hidden text-xs text-amber-400">Chưa có tab nào nối. Mở ChatGPT, Gemini, Claude, Grok hay Muse ở trình duyệt đã cài extension (xem <a class="underline" href="/connect">Nối trình duyệt</a>), hoặc thêm bot bên dưới.</p>
+      <p id="noPeople" class="hidden text-xs text-amber-400">Chưa có tab nào nối. Mở ChatGPT, Gemini, Claude, Grok hay Muse ở trình duyệt đã cài extension (xem <a class="underline" href="{{ BASE }}/connect">Nối trình duyệt</a>), hoặc thêm bot bên dưới.</p>
     </section>
 
     <section>
@@ -110,14 +112,15 @@
 </div>
 
 <script>
+const BASE = window.__MUSE_BASE__ || '';
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PROV = {muse:['Muse','🦜','#fbbf24'], chatgpt:['ChatGPT','🟢','#34d399'], gemini:['Gemini','🔷','#60a5fa'], claude:['Claude','🟠','#fb923c'], grok:['Grok','⚫','#d1d5db'], other:['Bot','🤖','#c084fc']};
 const ST = {idle:'rảnh', busy:'đang bận', paused:'tạm nghỉ', quota:'hết lượt', offline:'mất kết nối'};
 let people = [], bots = [], rooms = [], cur = null, sel = {}, persona = {}, lastPeople = '', lastRooms = '';
 
 async function api(path, method, body){
-  const r = await fetch(path, {method: method || 'GET', headers: {'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined});
-  if(r.status === 401){ location.href = '/login?next=/san-choi'; throw new Error('login'); }
+  const r = await fetch(BASE + path, {method: method || 'GET', headers: {'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  if(r.status === 401){ location.href = BASE + '/login?next=/san-choi'; throw new Error('login'); }
   return r.json();
 }
 
@@ -331,7 +334,7 @@ async function attachFile(input){
   const prev = document.getElementById('sayAttachPreview');
   prev.classList.remove('hidden'); prev.textContent = 'Đang tải lên ' + f.name + '…';
   try{
-    const r = await fetch('/api/arena/upload', {method:'POST', body: fd});
+    const r = await fetch(BASE + '/api/arena/upload', {method:'POST', body: fd});
     const d = await r.json();
     if(d.error){ prev.textContent = 'Lỗi: ' + d.error; pendingAttach = null; return; }
     pendingAttach = {url: d.url, kind: d.kind, name: f.name};
@@ -357,7 +360,7 @@ async function chooseOption(choiceText){
   loadRooms();
 }
 
-fetch('/api/arena/default-intro').then(r => r.json()).then(d => { if(!intro.value) intro.value = d.intro; }).catch(() => {});
+fetch(BASE + '/api/arena/default-intro').then(r => r.json()).then(d => { if(!intro.value) intro.value = d.intro; }).catch(() => {});
 setInterval(loadPeople, 1500); setInterval(loadRooms, 1000); loadPeople(); loadRooms();
 </script>
 </body>

@@ -55,3 +55,17 @@ Mỗi tài khoản Muse ở một trình duyệt hoặc profile riêng; các tab
 ## Khi sửa làng 3D
 
 `lang.html` là bản build của làng 3D. Khi có bản mới, chép đè `lang.html` rồi khởi động lại.
+
+## Cách C · cPanel Node.js (chung domain CRM tại `/muse`)
+
+Bản chạy chính là **Node.js** trong thư mục `node/` (xem `node/README.md`). Trên Vietnix dùng **Setup Node.js App** (không cần Python):
+
+| Mục | Giá trị |
+|---|---|
+| Node.js version | 20 (hoặc 18) |
+| Application root | `/home/salemmon/muse` |
+| Application URL | `crm.buihuuthang.com/muse` |
+| Startup file | `app.js` |
+| Environment | `MUSE_PUBLIC=1`, `MUSE_HTTPS=1`, `MUSE_BASE=/muse`, `MUSE_DATA=/home/salemmon/muse/data`, `MUSE_PASSWORD=…` |
+
+Gói deploy: các file app ở gốc zip (`app.js`, `server.js`, `lib/`, `templates/`, `lang.html`, `muse_bridge.js`, `extension/`, `brains/`, `package.json`) — không kèm `node_modules`.

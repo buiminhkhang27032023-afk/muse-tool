@@ -8,9 +8,13 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { createJobStore } = require("./jobstore");
 
-const HERE = __dirname.endsWith("lib") ? path.dirname(__dirname) : __dirname; // node/
-const ROOT = path.resolve(HERE, ".."); // D:\tool muse (tài sản tĩnh dùng chung: brains gốc, templates, lang.html)
+const HERE = __dirname.endsWith("lib") ? path.dirname(__dirname) : __dirname; // node/ or app root
+// Deploy flat (templates next to server.js) OR monorepo (templates in parent of node/).
+const ROOT = process.env.MUSE_ROOT
+  ? path.resolve(process.env.MUSE_ROOT)
+  : (fs.existsSync(path.join(HERE, "templates")) ? HERE : path.resolve(HERE, ".."));
 const DATA = process.env.MUSE_DATA || path.join(HERE, "data");
 const BRAIN_DIR = path.join(DATA, "brains");
 const RUNS_FILE = path.join(DATA, "court_runs.json");
@@ -21,6 +25,11 @@ if (!fs.existsSync(BRAIN_DIR)) {
     fs.cpSync(path.join(ROOT, "brains"), BRAIN_DIR, { recursive: true });
   } catch (_) { /* chưa có brains gốc, bỏ qua */ }
 }
+
+// Disk-backed job bus: required under Passenger/LiteSpeed when >1 Node worker.
+// In-memory Maps stay as a fast path for the worker that owns waitTask().
+const jobstore = createJobStore(DATA);
+jobstore.cleanup(7200);
 
 const QUEUE_WAIT = 600; // giây chờ có tab rảnh nhận việc
 const STEP_TIMEOUT = 240; // giây chờ Muse trả lời mỗi bước
@@ -270,33 +279,89 @@ function bridgeOnline() {
   return false;
 }
 
+function taskMatchesTab(t, tab, agent) {
+  const want = t.agent || "";
+  if (t.tab) return t.tab === tab.id; // việc của sân chơi: đích danh một tab
+  return tab.roles.includes(want) || (!tab.roles.length && (tab.provider || "muse") === "muse" && !agentOnline(want));
+}
+
+function markTaken(task, tab) {
+  const ts = nowS();
+  tab.busy = task.id;
+  tab.busy_since = ts;
+  jobstore.setBusy(tab.id, task.id);
+  jobstore.patchMeta(task.id, { taken: ts, tab: tab.id, label: tab.label });
+  if (tasks.has(task.id)) {
+    const rec = tasks.get(task.id);
+    rec.taken = ts;
+    if (rec.step) rec.step.tab = tab.label;
+  } else {
+    // Reply may land on this worker while waitTask runs on another — keep a stub.
+    tasks.set(task.id, { text: "", final: false, step: null, taken: ts, resolvers: [] });
+  }
+  // Drop from this process's memory queue if present
+  const i = pending.findIndex((p) => p.id === task.id);
+  if (i >= 0) pending.splice(i, 1);
+}
+
 function takeTask(tabId, agent, label, provider) {
   const tab = touchBridge(agent, tabId, label, provider);
+  const diskBusy = jobstore.getBusy(tab.id, BUSY_MAX);
+  if (diskBusy && !tab.busy) {
+    tab.busy = diskBusy;
+    tab.busy_since = nowS();
+  }
+  if (tab.busy && nowS() - tab.busy_since > BUSY_MAX) {
+    jobstore.clearBusy(tab.id, tab.busy);
+    tab.busy = null;
+  }
   if (tab.busy || !tabReady(tab)) return null;
-  for (let i = 0; i < pending.length; i++) {
-    const t = pending[i];
-    const want = t.agent || "";
-    let ok;
-    if (t.tab) ok = t.tab === tab.id; // việc của sân chơi: đích danh một tab
-    else ok = tab.roles.includes(want) || (!tab.roles.length && (tab.provider || "muse") === "muse" && !agentOnline(want));
-    if (ok) {
-      const task = pending.splice(i, 1)[0];
-      tab.busy = task.id;
-      tab.busy_since = nowS();
-      if (tasks.has(task.id)) {
-        const rec = tasks.get(task.id);
-        rec.taken = nowS();
-        if (rec.step) rec.step.tab = tab.label; // tài khoản nào đang làm bước này
-      }
-      return task;
+
+  // Prefer disk claim (works across Passenger workers); memory is a hint only.
+  const tryIds = [];
+  for (const t of pending) {
+    if (taskMatchesTab(t, tab, agent)) tryIds.push(t.id);
+  }
+  for (const id of jobstore.listPendingIds()) {
+    if (!tryIds.includes(id)) {
+      const t = jobstore.readPending(id);
+      if (t && taskMatchesTab(t, tab, agent)) tryIds.push(id);
     }
+  }
+  for (const id of tryIds) {
+    let claimed = jobstore.claim(id);
+    if (!claimed) {
+      const stillOnDisk = Boolean(jobstore.readPending(id));
+      const mem = pending.find((p) => p.id === id);
+      if (stillOnDisk) {
+        // Contended; try next id
+        continue;
+      }
+      if (mem) {
+        // Disk enqueue missing (permissions etc.) — fall back to in-memory only
+        claimed = mem;
+      } else {
+        continue;
+      }
+    }
+    markTaken(claimed, tab);
+    return claimed;
   }
   return null;
 }
 
 function onResponse(taskId, text, isFinal) {
-  const t = tasks.get(taskId);
-  if (!t) return false;
+  if (!taskId) return false;
+  // Always persist so the worker running waitTask() (possibly another process) sees it.
+  jobstore.patchMeta(taskId, { text: text || "", final: Boolean(isFinal) });
+  jobstore.dropPending(taskId);
+
+  let t = tasks.get(taskId);
+  if (!t) {
+    // Reply hit a different worker than askTab — create stub; waitTask on owner reads meta.
+    t = { text: "", final: false, step: null, resolvers: [] };
+    tasks.set(taskId, t);
+  }
   t.text = text;
   const step = t.step;
   if (step) {
@@ -307,8 +372,22 @@ function onResponse(taskId, text, isFinal) {
     t.final = true;
     (t.resolvers || []).forEach((fn) => fn());
     t.resolvers = [];
+    const meta = jobstore.readMeta(taskId);
+    const busyTabId = meta && meta.tab;
+    let cleared = false;
     for (const tb of tabs.values()) {
       if (tb.busy === taskId) {
+        tb.busy = null;
+        roll(tb);
+        tb.done += 1;
+        jobstore.clearBusy(tb.id, taskId);
+        cleared = true;
+      }
+    }
+    if (!cleared && busyTabId) {
+      jobstore.clearBusy(busyTabId, taskId);
+      const tb = tabs.get(busyTabId);
+      if (tb) {
         tb.busy = null;
         roll(tb);
         tb.done += 1;
@@ -354,23 +433,38 @@ function freshTaskId(prefix) {
 }
 
 async function waitTask(taskId, { isCancelled, stepTimeout, queueWait, onTimeoutCleanup }) {
-  const queuedAt = Date.now();
+  const queuedAt = nowS();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     await sleep(500);
     if (isCancelled && isCancelled()) {
+      jobstore.dropPending(taskId);
       if (onTimeoutCleanup) onTimeoutCleanup("cancelled");
       throw new RunCancelled();
     }
     const t = tasks.get(taskId);
     if (!t) throw new StepFailed("nội bộ: tác vụ đã biến mất");
+
+    // Merge disk meta (reply/taken may have been written by another worker)
+    const meta = jobstore.readMeta(taskId);
+    if (meta) {
+      if (meta.taken && !t.taken) t.taken = meta.taken;
+      if (meta.text != null && meta.text !== "") t.text = meta.text;
+      if (meta.final) {
+        t.final = true;
+        t.text = meta.text != null ? meta.text : t.text;
+      }
+    }
+
     if (t.final) return t;
     const taken = t.taken;
-    if (taken && Date.now() > taken + stepTimeout * 1000) {
+    // taken is epoch seconds (nowS), same as Python time.time()
+    if (taken && nowS() > taken + stepTimeout) {
       if (onTimeoutCleanup) onTimeoutCleanup("step_timeout");
       throw new StepFailed(`quá ${stepTimeout} giây không trả lời`);
     }
-    if (!taken && Date.now() > queuedAt + queueWait * 1000) {
+    if (!taken && nowS() > queuedAt + queueWait) {
+      jobstore.dropPending(taskId);
       if (onTimeoutCleanup) onTimeoutCleanup("queue_timeout");
       throw new StepFailed(`không có tab nào nhận việc (quá ${queueWait} giây)`);
     }
@@ -385,13 +479,16 @@ async function askAgent(run, agent, kind, instruction, context, frm) {
   const step = { id: taskId, from: frm, to: agent, kind, ask: instruction.trim(), reply: "", status: "running", ts: nowS() };
   run.steps.push(step);
   tasks.set(taskId, { text: "", final: false, step, resolvers: [] });
-  pending.push({ id: taskId, text: buildPrompt(taskId, agent, instruction, context), agent });
+  const agentTask = { id: taskId, text: buildPrompt(taskId, agent, instruction, context), agent };
+  pending.push(agentTask);
+  jobstore.enqueue(agentTask);
   await waitTask(taskId, {
     isCancelled: () => run.status === "cancelled",
     stepTimeout: STEP_TIMEOUT,
     queueWait: QUEUE_WAIT,
     onTimeoutCleanup: (reason) => {
       step.status = reason === "cancelled" ? "cancelled" : "timeout";
+      jobstore.dropPending(taskId);
       if (reason === "queue_timeout") {
         const i = pending.findIndex((p) => p.id === taskId);
         if (i >= 0) pending.splice(i, 1);
@@ -406,13 +503,17 @@ async function askTab(tabId, build, opts) {
   opts = opts || {};
   const taskId = freshTaskId("a");
   tasks.set(taskId, { text: "", final: false, step: null, resolvers: [] });
-  pending.push({ id: taskId, text: build(taskId), agent: "", tab: tabId, raw: Boolean(opts.raw) });
+  const tabTask = { id: taskId, text: build(taskId), agent: "", tab: tabId, raw: Boolean(opts.raw) };
+  pending.push(tabTask);
+  jobstore.enqueue(tabTask);
   try {
     await waitTask(taskId, {
       isCancelled: opts.stop,
       stepTimeout: STEP_TIMEOUT,
       queueWait: opts.queueWait || 180,
       onTimeoutCleanup: (reason) => {
+        jobstore.dropPending(taskId);
+        jobstore.clearBusy(tabId, taskId);
         if (reason === "cancelled" || reason === "queue_timeout") {
           const i = pending.findIndex((p) => p.id === taskId);
           if (i >= 0) pending.splice(i, 1);
@@ -424,12 +525,15 @@ async function askTab(tabId, build, opts) {
   } catch (e) {
     throw e;
   }
-  return [taskId, cleanReply(tasks.get(taskId).text)];
+  const done = tasks.get(taskId);
+  return [taskId, cleanReply(done ? done.text : "")];
 }
 
 function partialReply(taskId) {
   const t = tasks.get(taskId);
-  return t ? cleanReply(t.text) : "";
+  if (t && t.text) return cleanReply(t.text);
+  const meta = jobstore.readMeta(taskId);
+  return meta && meta.text ? cleanReply(meta.text) : "";
 }
 
 // ---------- đọc lệnh trong câu trả lời ----------
@@ -584,6 +688,7 @@ function cancelRun(rid) {
     r.status = "cancelled";
     const ids = new Set(r.steps.map((s) => s.id));
     for (let i = pending.length - 1; i >= 0; i--) if (ids.has(pending[i].id)) pending.splice(i, 1);
+    for (const id of ids) jobstore.dropJob(id);
     return true;
   }
   return false;
@@ -593,9 +698,14 @@ function clearRuns() {
   for (const r of runs.values()) if (r.status === "running") r.status = "cancelled";
   const n = runs.size;
   runs.clear();
+  for (const p of pending) jobstore.dropJob(p.id);
   pending.length = 0;
   tasks.clear();
-  for (const t of tabs.values()) t.busy = null;
+  for (const t of tabs.values()) {
+    if (t.busy) jobstore.clearBusy(t.id, t.busy);
+    t.busy = null;
+  }
+  jobstore.wipe();
   try {
     fs.unlinkSync(RUNS_FILE);
   } catch (_) { /* không có file, bỏ qua */ }

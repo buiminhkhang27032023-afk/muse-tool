@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script>window.__MUSE_BASE__={{ (BASE or "")|tojson }};</script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Muse AI — Video Automation Studio Tool</title>
@@ -61,8 +63,8 @@
                 <span id="statusText">Đang chờ tab muse.ai</span>
             </div>
 
-            <a href="/trieu-dinh" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-700 hover:bg-red-600 text-white">🐉 Triều Đình</a>
-            <a href="/jarvis" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white">🤖 JARVIS</a>
+            <a href="{{ BASE }}/trieu-dinh" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-700 hover:bg-red-600 text-white">🐉 Triều Đình</a>
+            <a href="{{ BASE }}/jarvis" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white">🤖 JARVIS</a>
             <button onclick="openBridgeModal()" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 transition-all">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -162,10 +164,11 @@
 
     <!-- Script điều khiển Tool -->
     <script>
+const BASE = window.__MUSE_BASE__ || '';
         let lastMessagesHash = "";
         let bridgeCode = "";
 
-        fetch('/api/bridge-script')
+        fetch(BASE + '/api/bridge-script')
             .then(res => res.text())
             .then(code => {
                 bridgeCode = code;
@@ -200,7 +203,7 @@
 
         async function checkStatus() {
             try {
-                const res = await fetch('/api/status');
+                const res = await fetch(BASE + '/api/status');
                 const data = await res.json();
                 
                 const badge = document.getElementById('statusBadge');
@@ -221,7 +224,7 @@
 
         async function fetchMessages() {
             try {
-                const res = await fetch('/api/messages');
+                const res = await fetch(BASE + '/api/messages');
                 const messages = await res.json();
                 const currentHash = JSON.stringify(messages);
                 
@@ -294,7 +297,7 @@
             sendBtn.disabled = true;
 
             try {
-                const res = await fetch('/api/send', {
+                const res = await fetch(BASE + '/api/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: text })

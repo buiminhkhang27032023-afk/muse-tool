@@ -1,0 +1,5 @@
+# Keep a single Node worker so in-memory room runners stay consistent.
+# Job queue/results are also on disk (MUSE_DATA/jobs) as a safety net.
+PassengerMaxInstancesPerApp 1
+PassengerMinInstances 1
+PassengerPoolIdleTime 300

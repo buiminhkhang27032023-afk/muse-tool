@@ -345,12 +345,17 @@
     async function sendResponseToTool(promptId, text, isFinal) {
         if (!text || text === "More") return;
         try {
-            await fetch(TOOL_API + "/api/response", {
+            const res = await fetch(TOOL_API + "/api/response", {
                 method: "POST",
                 headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
                 body: JSON.stringify({ prompt_id: promptId, text: text, is_final: isFinal })
             });
-        } catch (e) {}
+            if (!res.ok) {
+                console.warn("[MUSE BRIDGE] Gửi trả lời thất bại HTTP " + res.status + " -> " + TOOL_API + "/api/response");
+            }
+        } catch (e) {
+            console.warn("[MUSE BRIDGE] Không gửi được trả lời về Tool:", e && e.message ? e.message : e);
+        }
     }
 
     function watchResponse(task) {

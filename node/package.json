@@ -1,10 +1,10 @@
 {
   "name": "muse-tool",
   "version": "1.0.0",
-  "description": "Cầu nối Triều Đình, Sân Chơi Bot, JARVIS — bản Node.js",
-  "main": "server.js",
+  "description": "C\u1ea7u n\u1ed1i Tri\u1ec1u \u0110\u00ecnh, S\u00e2n Ch\u01a1i Bot, JARVIS \u2014 b\u1ea3n Node.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node app.js"
   },
   "license": "MIT",
   "dependencies": {
@@ -12,7 +12,10 @@
     "express-session": "^1.18.0",
     "cors": "^2.8.5",
     "multer": "^2.0.0",
-    "which": "^4.0.0",
-    "archiver": "^8.0.0"
+    "which": "^3.0.1",
+    "archiver": "^7.0.1"
+  },
+  "engines": {
+    "node": ">=18 <23"
   }
 }

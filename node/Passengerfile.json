@@ -1,0 +1,7 @@
+{
+  "max_pool_size": 1,
+  "min_instances": 1,
+  "max_instances_per_app": 1,
+  "pool_idle_time": 300,
+  "friendly_error_pages": false
+}

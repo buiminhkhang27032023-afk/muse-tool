@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script>window.__MUSE_BASE__={{ (BASE or "")|tojson }};</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JARVIS — Trợ lý giọng nói</title>
@@ -52,8 +54,8 @@
         <span id="museBadgeText">Cầu nối: chưa nối</span>
       </div>
       <button onclick="openBrainModal()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">🧠 Bộ não</button>
-      <a href="/chat" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">💬 Chat</a>
-      <a href="/lang" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">🏯 Làng 3D</a>
+      <a href="{{ BASE }}/chat" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">💬 Chat</a>
+      <a href="{{ BASE }}/lang" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">🏯 Làng 3D</a>
     </div>
   </header>
 
@@ -114,6 +116,7 @@
   </main>
 
 <script>
+const BASE = window.__MUSE_BASE__ || '';
 const coreWrap = document.getElementById('coreWrap');
 const stateText = document.getElementById('stateText');
 const interimEl = document.getElementById('interim');
@@ -142,6 +145,7 @@ function logLine(who, text){
   logBox.scrollTop = logBox.scrollHeight;
 }
 function showScreenshot(url){
+  if(url && url.charAt(0) === '/') url = BASE + url;
   shotPreview.src = url + '?t=' + Date.now();
   shotPreview.classList.remove('hidden');
 }
@@ -245,7 +249,7 @@ micBtn.addEventListener('click', () => {
 let jarvisBrain = '';
 async function loadBrain(){
   try {
-    const res = await fetch('/api/jarvis/brain');
+    const res = await fetch(BASE + '/api/jarvis/brain');
     const data = await res.json();
     jarvisBrain = data.text || '';
   } catch (e) {}
@@ -260,7 +264,7 @@ function closeBrainModal(){
 async function saveBrain(){
   const text = document.getElementById('brainText').value;
   try {
-    const res = await fetch('/api/jarvis/brain', {
+    const res = await fetch(BASE + '/api/jarvis/brain', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text})
     });
     if (res.ok) { jarvisBrain = text; closeBrainModal(); logLine('jarvis', 'Đã lưu bộ não mới.'); }
@@ -276,7 +280,7 @@ async function handleUtterance(text){
   logLine('user', text);
   setState('thinking');
   try {
-    const res = await fetch('/api/jarvis/cmd', {
+    const res = await fetch(BASE + '/api/jarvis/cmd', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text})
     });
     const data = await res.json();
@@ -289,7 +293,7 @@ async function handleUtterance(text){
       // không phải lệnh máy: hỏi Muse, có kèm bộ não để trả lời đúng vai JARVIS
       const sendText = (jarvisBrain ? jarvisBrain + '\n\n---\n' : '') +
         'Sếp hỏi: ' + text + '\n\n(Trả lời đúng vai JARVIS, ngắn gọn, nói chuyện bằng tiếng Việt.)';
-      const sendRes = await fetch('/api/send', {
+      const sendRes = await fetch(BASE + '/api/send', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({text, send_text: sendText})
       });
@@ -334,7 +338,7 @@ async function pollMuseReplies(){
   }
   if (pendingAsk.size === 0) return;
   try {
-    const res = await fetch('/api/messages');
+    const res = await fetch(BASE + '/api/messages');
     const msgs = await res.json();
     msgs.forEach(m => {
       if (m.role !== 'assistant' || !pendingAsk.has(m.reply_to) || spokenIds.has(m.id) || !m.text) return;
@@ -352,7 +356,7 @@ setInterval(pollMuseReplies, 1000);
 
 async function checkMuseStatus(){
   try {
-    const res = await fetch('/api/status');
+    const res = await fetch(BASE + '/api/status');
     const data = await res.json();
     const badge = document.getElementById('museBadge');
     const text = document.getElementById('museBadgeText');

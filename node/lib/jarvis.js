@@ -11,6 +11,7 @@ const path = require("path");
 const { execFile, exec } = require("child_process");
 
 const court = require("./court");
+const { sendHtmlFile, pref, base } = require("./prefix");
 
 const BASE_DIR = court.HERE;
 const SCREENSHOT_DIR = path.join(court.DATA, "screenshots");
@@ -247,7 +248,7 @@ async function handleSingle(text) {
 
   if (["chup man hinh", "chup anh man hinh", "screenshot"].some((k) => text.includes(k))) {
     const fname = await takeScreenshot();
-    if (fname) return { matched: true, ok: true, reply: "Đã chụp màn hình xong.", extra: { screenshot: "/jarvis/screenshot/" + fname } };
+    if (fname) return { matched: true, ok: true, reply: "Đã chụp màn hình xong.", extra: { screenshot: pref("/jarvis/screenshot/" + fname) } };
     return { matched: true, ok: false, reply: "Chụp màn hình không thành công." };
   }
 
@@ -310,7 +311,7 @@ async function handleSingle(text) {
 
 function init(app) {
   app.get("/jarvis", (req, res) => {
-    res.sendFile(path.join(court.ROOT, "templates", "jarvis.html"));
+    sendHtmlFile(res, path.join(court.ROOT, "templates", "jarvis.html"));
   });
 
   app.post("/api/jarvis/cmd", async (req, res) => {
