@@ -1,0 +1,24 @@
+services:
+  muse:
+    build: .
+    restart: unless-stopped
+    environment:
+      MUSE_PASSWORD: ${MUSE_PASSWORD:?Hay dat MUSE_PASSWORD trong file .env}
+    volumes:
+      - muse-data:/data
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Hay dat DOMAIN trong file .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - muse
+volumes:
+  muse-data:
+  caddy-data:

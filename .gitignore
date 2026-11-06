@@ -1,0 +1,20 @@
+# dữ liệu & bí mật — không đưa lên GitHub
+data/
+arena_bots.json
+arena_rooms.json
+court_runs.json
+court_tabs.json
+server.log
+
+# thư viện đóng gói sẵn (dùng cho bản portable, không cần trong git)
+libs/
+
+# rác python
+__pycache__/
+*.pyc
+
+# file build/portable tự tạo
+muse_tool_portable.zip
+
+# môi trường thật (chỉ giữ .env.example)
+.env

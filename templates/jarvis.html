@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS — Trợ lý giọng nói</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Be Vietnam Pro',sans-serif;background:#060a12;}
+  .orbitron{font-family:'Orbitron',sans-serif;}
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-thumb{background:#1f2937;border-radius:9999px}
+
+  .core-wrap{position:relative;width:260px;height:260px}
+  .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(34,211,238,0.25)}
+  .ring.r2{inset:18px;border-color:rgba(34,211,238,0.35);animation:spin 10s linear infinite}
+  .ring.r3{inset:36px;border-color:rgba(34,211,238,0.5);border-style:dashed;animation:spin 16s linear infinite reverse}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .core{position:absolute;inset:56px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#bff7ff,#22d3ee 40%,#0e7490 75%,#042f3a 100%);
+        box-shadow:0 0 40px 6px rgba(34,211,238,0.55), 0 0 90px 20px rgba(34,211,238,0.25);
+        transition:box-shadow .3s,background .3s;}
+  .core-wrap[data-state="listening"] .core{animation:pulse 1.4s ease-in-out infinite}
+  .core-wrap[data-state="thinking"] .core, .core-wrap[data-state="waiting-muse"] .core{
+        background:radial-gradient(circle at 50% 40%,#ffe9bf,#fbbf24 40%,#92400e 75%,#3a1d04 100%);
+        box-shadow:0 0 40px 6px rgba(251,191,36,0.55), 0 0 90px 20px rgba(251,191,36,0.25);
+        animation:pulse 0.9s ease-in-out infinite;}
+  .core-wrap[data-state="speaking"] .core{
+        background:radial-gradient(circle at 50% 40%,#c8ffe4,#34d399 40%,#065f46 75%,#022c22 100%);
+        box-shadow:0 0 40px 6px rgba(52,211,153,0.6), 0 0 100px 24px rgba(52,211,153,0.3);
+        animation:pulse 0.5s ease-in-out infinite;}
+  .core-wrap[data-state="idle"] .core{animation:none}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+
+  .mic-btn{position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);}
+  .log-bubble{max-width:100%;}
+</style>
+</head>
+<body class="min-h-screen text-gray-100 flex flex-col">
+
+  <header class="border-b border-cyan-900/40 bg-[#070c15]/90 backdrop-blur sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <span class="text-2xl">🤖</span>
+      <div>
+        <h1 class="orbitron text-base font-bold text-cyan-300 tracking-widest">JARVIS</h1>
+        <p class="text-xs text-gray-500">Trợ lý giọng nói · điều khiển máy &amp; hỏi Muse</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3">
+      <div id="museBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+        <span id="museBadgeText">Cầu nối: chưa nối</span>
+      </div>
+      <button onclick="openBrainModal()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">🧠 Bộ não</button>
+      <a href="/chat" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">💬 Chat</a>
+      <a href="/lang" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">🏯 Làng 3D</a>
+    </div>
+  </header>
+
+  <!-- Modal Bộ não -->
+  <div id="brainModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0e1422] border border-gray-800 max-w-xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-[#131b2e]">
+        <h3 class="font-bold text-white text-base flex items-center space-x-2"><span>🧠</span><span>Bộ não JARVIS</span></h3>
+        <button onclick="closeBrainModal()" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 space-y-3">
+        <p class="text-xs text-gray-400">Mô tả tính cách &amp; cách trả lời của JARVIS khi hỏi Muse. Áp dụng ngay cho câu hỏi tiếp theo.</p>
+        <textarea id="brainText" rows="9" class="w-full bg-[#131b2e] border border-gray-700 rounded-xl p-3 text-sm text-gray-100 focus:outline-none focus:border-cyan-500"></textarea>
+      </div>
+      <div class="px-5 py-3 border-t border-gray-800 bg-[#0b0f17] flex justify-end space-x-2">
+        <button onclick="closeBrainModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-medium text-xs">Đóng</button>
+        <button onclick="saveBrain()" class="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 text-white rounded-xl font-medium text-xs">Lưu bộ não</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="flex-1 w-full max-w-5xl mx-auto px-4 py-8 grid md:grid-cols-[320px_1fr] gap-8 items-start">
+
+    <!-- Core + mic -->
+    <div class="flex flex-col items-center">
+      <div class="core-wrap" id="coreWrap" data-state="idle">
+        <div class="ring"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="core"></div>
+        <button id="micBtn" class="mic-btn w-14 h-14 rounded-full bg-gray-900 border-2 border-cyan-500/70 text-xl shadow-lg hover:bg-gray-800 flex items-center justify-center">🎤</button>
+      </div>
+      <p id="stateText" class="mt-6 orbitron text-sm tracking-widest text-cyan-400">CHỜ LỆNH</p>
+      <p id="interim" class="mt-2 text-xs text-gray-500 italic min-h-[16px]"></p>
+      <p id="voiceName" class="mt-1 text-[11px] text-gray-500 text-center max-w-xs"></p>
+
+      <div id="noSpeechWarn" class="hidden mt-5 text-xs text-amber-300 bg-amber-900/20 border border-amber-800/40 rounded-xl p-3 max-w-xs text-center">
+        Trình duyệt này không hỗ trợ nhận diện giọng nói. Hãy dùng Chrome/Edge trên máy tính và cho phép quyền micro. Bạn vẫn gõ lệnh bằng chữ bên dưới được.
+      </div>
+
+      <img id="shotPreview" class="hidden mt-5 rounded-xl border border-gray-700 max-w-xs" />
+
+      <p class="mt-6 text-[11px] text-gray-500 text-center max-w-xs">
+        Lệnh điều khiển máy (mở/đóng ứng dụng, khóa máy, chụp màn hình, âm lượng…) chỉ chạy trên máy đang mở Tool này.
+        Câu hỏi khác sẽ được gửi sang Muse qua cầu nối, giống trang Chat.
+      </p>
+    </div>
+
+    <!-- Log -->
+    <div class="flex flex-col h-[560px] bg-[#0b0f17] border border-gray-800/80 rounded-2xl overflow-hidden">
+      <div id="logBox" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+      <form id="typeForm" class="border-t border-gray-800 p-3 flex items-center space-x-2">
+        <input id="typeInput" type="text" placeholder="Hoặc gõ lệnh/câu hỏi rồi Enter…"
+               class="flex-1 bg-[#131b2e] border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500">
+        <button type="submit" class="px-3 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-medium">Gửi</button>
+      </form>
+    </div>
+  </main>
+
+<script>
+const coreWrap = document.getElementById('coreWrap');
+const stateText = document.getElementById('stateText');
+const interimEl = document.getElementById('interim');
+const micBtn = document.getElementById('micBtn');
+const logBox = document.getElementById('logBox');
+const shotPreview = document.getElementById('shotPreview');
+
+const STATE_LABEL = {idle:'CHỜ LỆNH', listening:'ĐANG NGHE', thinking:'ĐANG XỬ LÝ', 'waiting-muse':'ĐANG HỎI MUSE', speaking:'ĐANG NÓI'};
+function setState(s){
+  coreWrap.dataset.state = s;
+  stateText.textContent = STATE_LABEL[s] || s;
+}
+
+function escapeHtml(text){
+  const d = document.createElement('div'); d.innerText = text; return d.innerHTML;
+}
+function logLine(who, text){
+  const div = document.createElement('div');
+  const mine = who === 'user';
+  div.className = 'log-bubble flex ' + (mine ? 'justify-end' : 'justify-start');
+  div.innerHTML = '<div class="max-w-[90%] rounded-xl px-3 py-2 ' +
+    (mine ? 'bg-cyan-900/40 border border-cyan-700/40 text-cyan-100' : 'bg-gray-900 border border-gray-700/60 text-gray-200') +
+    '"><div class="text-[10px] mb-0.5 ' + (mine ? 'text-cyan-400' : 'text-amber-400') + '">' + (mine ? 'Bạn' : 'JARVIS') + '</div>' +
+    '<div class="whitespace-pre-wrap leading-relaxed">' + escapeHtml(text) + '</div></div>';
+  logBox.appendChild(div);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+function showScreenshot(url){
+  shotPreview.src = url + '?t=' + Date.now();
+  shotPreview.classList.remove('hidden');
+}
+
+/* ---------- Text-to-speech (ưu tiên giọng nữ tiếng Việt) ---------- */
+const synth = window.speechSynthesis;
+let viVoice = null;
+const FEMALE_HINTS = ['hoaimy', 'female', 'nu', 'woman', 'linh', 'mai', 'lan', 'huong', 'an'];
+const MALE_HINTS = ['nammin', 'male', 'nam'];
+function pickVoice(){
+  const voices = synth.getVoices();
+  const viVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('vi'));
+  viVoices.sort((a, b) => {
+    const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+    const aF = FEMALE_HINTS.some(h => an.includes(h)), bF = FEMALE_HINTS.some(h => bn.includes(h));
+    const aM = MALE_HINTS.some(h => an.includes(h)), bM = MALE_HINTS.some(h => bn.includes(h));
+    if (aF && !bF) return -1; if (bF && !aF) return 1;
+    if (aM && !bM) return 1; if (bM && !aM) return -1;
+    return 0;
+  });
+  viVoice = viVoices[0] || null;
+  const vn = document.getElementById('voiceName');
+  if (vn) vn.textContent = viVoice ? ('Giọng: ' + viVoice.name) : 'Chưa có giọng tiếng Việt trên máy — dùng Edge (có mạng) để có giọng nữ HoaiMy.';
+}
+if (synth) {
+  pickVoice();
+  synth.onvoiceschanged = pickVoice;
+}
+let speaking = false;
+function speak(text){
+  if (!synth || !text) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'vi-VN';
+  if (viVoice) u.voice = viVoice;
+  u.rate = 1.0;
+  u.onstart = () => { speaking = true; stopRecognition(); setState('speaking'); };
+  u.onend = () => { speaking = false; afterSpeak(); };
+  u.onerror = () => { speaking = false; afterSpeak(); };
+  synth.speak(u);
+}
+function afterSpeak(){
+  if (listening) startRecognition(); else setState('idle');
+}
+
+/* ---------- Speech recognition ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null, recognizing = false, listening = false;
+
+if (SR) {
+  recognition = new SR();
+  recognition.lang = 'vi-VN';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (e) => {
+    let interim = '', finalText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += t; else interim += t;
+    }
+    interimEl.textContent = interim;
+    if (finalText.trim()) { interimEl.textContent = ''; handleUtterance(finalText.trim()); }
+  };
+  recognition.onend = () => {
+    recognizing = false;
+    if (listening && !speaking) setTimeout(startRecognition, 250);
+  };
+  recognition.onerror = (e) => {
+    recognizing = false;
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      listening = false; setMicUI();
+      logLine('jarvis', 'Không có quyền dùng micro. Hãy cho phép quyền micro cho trang này rồi bấm 🎤 lại.');
+    }
+  };
+} else {
+  document.getElementById('noSpeechWarn').classList.remove('hidden');
+  micBtn.disabled = true;
+  micBtn.classList.add('opacity-40', 'cursor-not-allowed');
+}
+
+function startRecognition(){
+  if (!recognition || recognizing || speaking) return;
+  try { recognition.start(); recognizing = true; setState('listening'); } catch (e) {}
+}
+function stopRecognition(){
+  if (recognition && recognizing) { try { recognition.stop(); } catch (e) {} }
+  recognizing = false;
+}
+function setMicUI(){
+  micBtn.classList.toggle('border-emerald-400', listening);
+  if (!listening && !speaking) setState('idle');
+}
+micBtn.addEventListener('click', () => {
+  listening = !listening;
+  setMicUI();
+  if (listening) startRecognition(); else stopRecognition();
+});
+
+/* ---------- Bộ não ---------- */
+let jarvisBrain = '';
+async function loadBrain(){
+  try {
+    const res = await fetch('/api/jarvis/brain');
+    const data = await res.json();
+    jarvisBrain = data.text || '';
+  } catch (e) {}
+}
+function openBrainModal(){
+  document.getElementById('brainText').value = jarvisBrain;
+  document.getElementById('brainModal').classList.remove('hidden');
+}
+function closeBrainModal(){
+  document.getElementById('brainModal').classList.add('hidden');
+}
+async function saveBrain(){
+  const text = document.getElementById('brainText').value;
+  try {
+    const res = await fetch('/api/jarvis/brain', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text})
+    });
+    if (res.ok) { jarvisBrain = text; closeBrainModal(); logLine('jarvis', 'Đã lưu bộ não mới.'); }
+  } catch (e) {}
+}
+loadBrain();
+
+/* ---------- lệnh & hỏi Muse: mọi câu nói đều biến thành hành động thật ---------- */
+const pendingAsk = new Map();   // msgId -> addedAt
+const spokenIds = new Set();
+
+async function handleUtterance(text){
+  logLine('user', text);
+  setState('thinking');
+  try {
+    const res = await fetch('/api/jarvis/cmd', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text})
+    });
+    const data = await res.json();
+    if (data.matched) {
+      // lệnh máy: đã thực thi thật ở server (mở app, khóa máy, chụp màn hình, âm lượng...)
+      logLine('jarvis', data.reply);
+      if (data.extra && data.extra.screenshot) showScreenshot(data.extra.screenshot);
+      speak(data.reply);
+    } else {
+      // không phải lệnh máy: hỏi Muse, có kèm bộ não để trả lời đúng vai JARVIS
+      const sendText = (jarvisBrain ? jarvisBrain + '\n\n---\n' : '') +
+        'Sếp hỏi: ' + text + '\n\n(Trả lời đúng vai JARVIS, ngắn gọn, nói chuyện bằng tiếng Việt.)';
+      const sendRes = await fetch('/api/send', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text, send_text: sendText})
+      });
+      const sendData = await sendRes.json();
+      if (sendRes.ok) {
+        pendingAsk.set(sendData.message.id, Date.now());
+        setState('waiting-muse');
+      } else {
+        logLine('jarvis', 'Chưa gửi được câu hỏi.');
+        speak('Xin lỗi, tôi chưa gửi được câu hỏi.');
+      }
+    }
+  } catch (err) {
+    logLine('jarvis', 'Lỗi kết nối tới server cục bộ.');
+    speak('Có lỗi kết nối tới server.');
+  }
+}
+
+// cờ is_final từ cầu nối đôi khi không bao giờ chuyển true (muse.ai đổi giao diện khiến bridge
+// không nhận ra lúc nào Muse viết xong) — nên JARVIS tự coi là "xong" khi câu trả lời đứng yên
+// (không đổi chữ) trong ~2.2 giây liền, không chỉ chờ is_final.
+const lastSeenReply = new Map();  // respId -> {text, since}
+const STABLE_MS = 2200;
+
+function speakMuseReply(m){
+  spokenIds.add(m.id);
+  pendingAsk.delete(m.reply_to);
+  lastSeenReply.delete(m.id);
+  logLine('jarvis', m.text);
+  speak(m.text);
+}
+
+async function pollMuseReplies(){
+  const now = Date.now();
+  for (const [id, addedAt] of pendingAsk) {
+    if (now - addedAt > 60000) {
+      pendingAsk.delete(id);
+      logLine('jarvis', 'Chưa thấy Muse trả lời sau 1 phút. Bạn kiểm tra tab muse.ai đã nối chưa.');
+      speak('Tôi chưa thấy Muse trả lời. Bạn kiểm tra xem tab muse.ai đã nối chưa.');
+      if (!listening) setState('idle');
+    }
+  }
+  if (pendingAsk.size === 0) return;
+  try {
+    const res = await fetch('/api/messages');
+    const msgs = await res.json();
+    msgs.forEach(m => {
+      if (m.role !== 'assistant' || !pendingAsk.has(m.reply_to) || spokenIds.has(m.id) || !m.text) return;
+      if (m.is_final) { speakMuseReply(m); return; }
+      const prev = lastSeenReply.get(m.id);
+      if (prev && prev.text === m.text) {
+        if (now - prev.since >= STABLE_MS) speakMuseReply(m);
+      } else {
+        lastSeenReply.set(m.id, {text: m.text, since: now});
+      }
+    });
+  } catch (e) {}
+}
+setInterval(pollMuseReplies, 1000);
+
+async function checkMuseStatus(){
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    const badge = document.getElementById('museBadge');
+    const text = document.getElementById('museBadgeText');
+    if (data.bridge_connected) {
+      badge.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      text.textContent = "Cầu nối: đã nối 🟢";
+    } else {
+      badge.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      text.textContent = "Cầu nối: chưa nối 🟡";
+    }
+  } catch (e) {}
+}
+setInterval(checkMuseStatus, 3000);
+checkMuseStatus();
+
+document.getElementById('typeForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = document.getElementById('typeInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  handleUtterance(text);
+});
+
+logLine('jarvis', 'Xin chào, tôi là JARVIS. Bấm vào nút 🎤 để bắt đầu nói chuyện, hoặc gõ chữ ở dưới.');
+</script>
+</body>
+</html>

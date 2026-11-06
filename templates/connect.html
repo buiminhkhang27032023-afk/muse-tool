@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nối trình duyệt mới vào Triều Đình Muse</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#0b0f17] text-gray-100 min-h-screen">
+<div class="max-w-3xl mx-auto p-6 space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold">➕ Nối một trình duyệt mới</h1>
+      <p class="text-sm text-gray-400">Cài một lần, từ đó mọi trang muse.ai mở ra là tự nối. Không phải mở Console hay terminal của từng trang.</p>
+    </div>
+    <a href="/trieu-dinh" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700">← Triều Đình</a>
+  </div>
+
+  <div class="rounded-2xl border border-emerald-700/50 bg-emerald-900/10 p-5 space-y-3">
+    <h2 class="font-semibold">Cách 1 · Extension (Chrome, Edge, Brave, Opera): cài một lần, tự nối mãi mãi</h2>
+    <ol class="list-decimal ml-5 text-sm text-gray-300 space-y-1.5">
+      <li>Bấm <b>Tải extension</b>, giải nén file zip ra một thư mục (để yên đó, đừng xóa).</li>
+      <li>Trên trình duyệt đó vào <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>), bật <b>Developer mode</b> (góc phải trên).</li>
+      <li>Bấm <b>Load unpacked</b>, chọn thư mục vừa giải nén.</li>
+      <li>Xong. Mở muse.ai, đăng nhập tài khoản Muse: tab tự nối, góc dưới trái hiện huy hiệu 🐉. Lần sau mở lại trình duyệt cũng tự nối.</li>
+    </ol>
+    <a href="/extension.zip" class="inline-block px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold">⬇ Tải extension (đã trỏ về <span id="origin2"></span>)</a>
+    <p class="text-xs text-gray-500">Trình duyệt trên cùng máy chạy Tool có thể chọn thẳng thư mục <code>D:\muse_extension</code>. Sau khi Tool cập nhật, vào <code>chrome://extensions</code> bấm nút xoay tròn (Reload) một lần.</p>
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 space-y-3">
+    <h2 class="font-semibold">Cách 2 · Firefox, Safari hoặc không muốn cài: nút trên thanh dấu trang (bấm 1 lần mỗi trang)</h2>
+    <ol class="list-decimal ml-5 text-sm text-gray-300 space-y-1.5">
+      <li>Mở <b>trang này</b> trên trình duyệt mới (<code id="origin" class="text-emerald-300"></code>).</li>
+      <li>Bật thanh dấu trang (<kbd class="px-1 bg-gray-800 rounded">Ctrl</kbd>+<kbd class="px-1 bg-gray-800 rounded">Shift</kbd>+<kbd class="px-1 bg-gray-800 rounded">B</kbd>) rồi <b>kéo nút dưới đây</b> lên thanh đó.</li>
+      <li>Mở muse.ai, đăng nhập, rồi bấm nút <b>🔗 Nối Muse</b> trên thanh dấu trang.</li>
+    </ol>
+    <div class="flex items-center gap-3 pt-1">
+      <a id="bm" href="#" class="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-semibold cursor-grab" draggable="true">🔗 Nối Muse</a>
+      <span class="text-xs text-gray-500">← kéo nút này, đừng bấm</span>
+    </div>
+    <p class="text-xs text-gray-500">Mỗi lần F5 hoặc mở lại trang Muse thì bấm nút một lần nữa. Tên tab và vai đã gán được Tool nhớ.</p>
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 space-y-2">
+    <h2 class="font-semibold">Cách 3 · Dán mã vào Console (chỉ khi hai cách trên không dùng được)</h2>
+    <button id="copy" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold">Copy mã</button>
+    <span id="copyMsg" class="text-xs text-emerald-400"></span>
+    <p class="text-xs text-gray-500">Ở trang muse.ai bấm F12, vào Console, dán rồi Enter (Chrome/Edge bắt gõ <code>allow pasting</code> lần đầu).</p>
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 space-y-2">
+    <h2 class="font-semibold">Trình duyệt ở máy khác trong cùng mạng</h2>
+    <p class="text-sm text-gray-300">Trên máy chạy Tool, đóng cửa sổ cũ rồi chạy <code>run_lan.bat</code> (mở Tool cho cả mạng nội bộ, không có mật khẩu nên chỉ dùng ở mạng tin cậy). Từ máy kia mở <code>http://IP-máy-chạy-Tool:5000/connect</code> rồi làm Cách 1 hoặc 2: extension và nút dấu trang tải về từ trang đó tự trỏ đúng địa chỉ.</p>
+  </div>
+
+  <div class="rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
+    <h2 class="font-semibold mb-2">Đang nối <span id="count" class="text-emerald-400"></span></h2>
+    <div id="live" class="text-sm space-y-1"></div>
+    <p class="text-xs text-gray-500 mt-2">Trình duyệt mới nối xong sẽ hiện ở đây. Gán vai ở <a class="underline" href="/trieu-dinh">Triều Đình → 🔗 Tab Muse</a>.</p>
+  </div>
+</div>
+
+<script>
+const ORIGIN = location.origin;
+const TOKEN = {{ token|tojson }};
+document.getElementById('origin').textContent = ORIGIN + '/connect';
+document.getElementById('origin2').textContent = ORIGIN;
+const ST = {idle:'🟢 rảnh', busy:'🟡 đang làm', paused:'⏸ tạm nghỉ', quota:'🔴 hết lượt', offline:'⚪ mất kết nối'};
+let code = '';
+fetch('/api/bridge-script').then(r => r.text()).then(src => {
+  code = src.replace('"http://127.0.0.1:5000"', JSON.stringify(ORIGIN)).replace('let TOOL_TOKEN = "";', 'let TOOL_TOKEN = ' + JSON.stringify(TOKEN) + ';').split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).map(l => l.replace(/^\s+/, '')).join('\n');
+  document.getElementById('bm').href = 'javascript:' + encodeURIComponent('(function(){' + code + '\n})();');
+});
+document.getElementById('bm').addEventListener('click', e => { e.preventDefault(); alert('Hãy KÉO nút này lên thanh dấu trang, rồi mở muse.ai và bấm nút trên thanh đó.'); });
+document.getElementById('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(code); document.getElementById('copyMsg').textContent = 'Đã copy ✓'; }
+  catch(e) { document.getElementById('copyMsg').textContent = 'Không copy được, hãy mở /api/bridge-script rồi copy tay'; }
+});
+async function live(){
+  try{
+    const t = await (await fetch('/api/court/tabs')).json();
+    const on = t.filter(x => x.state !== 'offline');
+    document.getElementById('count').textContent = '(' + on.length + ' tab)';
+    document.getElementById('live').innerHTML = t.map(x => `<div class="${x.state==='offline'?'text-gray-500':''}">${ST[x.state]} · <b>${x.label.replace(/[<>&]/g,'')}</b> <span class="text-gray-500">${x.roles.length ? '· ' + x.roles.join(', ') : '· chưa gán vai'}</span></div>`).join('') || '<span class="text-gray-500">Chưa có tab nào.</span>';
+  }catch(e){}
+}
+setInterval(live, 1500); live();
+</script>
+</body>
+</html>

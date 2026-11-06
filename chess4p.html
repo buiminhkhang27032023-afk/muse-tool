@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>4-WAY CHESS - Đấu Trường Pixel AI</title>
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: #131c2e;
+      --border-color: #24324a;
+      --text-main: #f1f5f9;
+      --text-muted: #8fa0bc;
+      
+      /* Màu 4 phe chuẩn theo bàn cờ thực tế */
+      --red-color: #e11d48;
+      --blue-color: #1d4ed8;
+      --yellow-color: #eab308;
+      --green-color: #15803d;
+
+      /* Màu bàn cờ chuẩn thực tế: Xanh lục đậm & Trắng ngà */
+      --board-dark: #1b5e20;
+      --board-light: #f8fafc;
+      --board-border: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #111a2e 0%, #060911 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      overflow-x: hidden;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #f43f5e, #facc15, #22c55e, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    p.subtitle {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-direction: row;
+      gap: 24px;
+      max-width: 1440px;
+      width: 100%;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    /* KHUNG BÀN CỜ 4-WAY CHESS (CẮT GÓC & CHỮ IN BỐN GÓC Y HỆT HÌNH THỰC TẾ) */
+    .arena-container {
+      perspective: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .view-toggles {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn-toggle {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid var(--border-color);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-toggle.active {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #60a5fa;
+    }
+
+    /* BÀN CỜ */
+    .board-frame {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.2);
+      position: relative;
+      transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+
+    .board-frame.isometric {
+      transform: rotateX(38deg) rotateZ(-30deg) scale(0.92);
+      box-shadow: -20px 35px 50px rgba(0,0,0,0.9);
+    }
+
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(14, 42px);
+      grid-template-rows: repeat(14, 42px);
+      gap: 0;
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      position: relative;
+      user-select: none;
+    }
+
+    .square {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    /* Ô ĐẬM & Ô NHẠT THEO BÀN CỜ THỰC TẾ */
+    .square.light {
+      background-color: var(--board-light);
+    }
+
+    .square.dark {
+      background-color: var(--board-dark);
+    }
+
+    /* 4 GÓC 3x3 KHUYẾT */
+    .square.invalid {
+      background-color: #ffffff !important;
+      cursor: default;
+      border: none;
+    }
+
+    /* LOGO IN TRÊN 4 GÓC KHUYẾT Y BỨC ẢNH */
+    .corner-label {
+      position: absolute;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      color: #334155;
+      text-transform: uppercase;
+      pointer-events: none;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Georgia, serif;
+    }
+
+    .corner-label.bottom {
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* HIGHLIGHT DI CHUYỂN */
+    .square.selected {
+      background-color: #fde047 !important;
+      box-shadow: inset 0 0 0 2px #ca8a04;
+    }
+
+    .square.move-target::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background-color: rgba(34, 197, 94, 0.75);
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.9);
+      pointer-events: none;
+    }
+
+    .square.capture-target {
+      background-color: rgba(225, 29, 72, 0.5) !important;
+      box-shadow: inset 0 0 0 3px #e11d48;
+    }
+
+    .square.last-moved {
+      background-color: rgba(250, 204, 21, 0.4) !important;
+    }
+
+    /* SPRITE QUÂN CỜ PIXEL ART */
+    .pixel-piece {
+      width: 38px;
+      height: 38px;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.5));
+      transition: transform 0.15s ease;
+      pointer-events: none;
+    }
+
+    .pixel-piece:hover {
+      transform: scale(1.1);
+    }
+
+    /* BẢNG ĐIỀU KHIỂN & 4 BOT */
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 450px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .player-roster {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .player-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .player-box.red { border-color: rgba(225, 29, 72, 0.35); }
+    .player-box.blue { border-color: rgba(29, 78, 216, 0.35); }
+    .player-box.yellow { border-color: rgba(234, 179, 8, 0.35); }
+    .player-box.green { border-color: rgba(21, 128, 61, 0.35); }
+
+    .player-box.active {
+      box-shadow: 0 0 16px currentColor;
+      transform: translateY(-2px);
+    }
+    .player-box.active.red { border-color: var(--red-color); color: var(--red-color); }
+    .player-box.active.blue { border-color: var(--blue-color); color: #60a5fa; }
+    .player-box.active.yellow { border-color: var(--yellow-color); color: var(--yellow-color); }
+    .player-box.active.green { border-color: var(--green-color); color: #4ade80; }
+
+    .player-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .player-label {
+      font-weight: 800;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .player-score {
+      font-weight: 900;
+      font-size: 1rem;
+      background: rgba(0,0,0,0.4);
+      padding: 2px 7px;
+      border-radius: 4px;
+      color: #fff;
+    }
+
+    .ai-select {
+      background: #090d16;
+      color: #cbd5e1;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .captured-pieces {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      min-height: 20px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 4px;
+      padding: 2px 4px;
+      align-items: center;
+    }
+
+    .captured-icon {
+      width: 14px;
+      height: 14px;
+      image-rendering: pixelated;
+    }
+
+    /* BUTTONS */
+    .controls-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: #ffffff;
+      border: none;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover { background: #334155; }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-main {
+      grid-column: span 2;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      font-size: 0.95rem;
+      padding: 12px;
+    }
+    .btn-main:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+    .btn-main.running {
+      background: linear-gradient(135deg, #e11d48, #be123c);
+    }
+
+    .btn-reset {
+      background: #475569;
+    }
+
+    .speed-slider-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .speed-slider-wrap input {
+      flex: 1;
+      margin-left: 12px;
+      cursor: pointer;
+      accent-color: #3b82f6;
+    }
+
+    /* LOG & CHAT */
+    .log-container {
+      height: 175px;
+      overflow-y: auto;
+      background: #090d16;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 4px;
+    }
+
+    .log-item {
+      line-height: 1.4;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border-left: 3px solid #64748b;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .log-item.red { border-left-color: var(--red-color); }
+    .log-item.blue { border-left-color: #60a5fa; }
+    .log-item.yellow { border-left-color: var(--yellow-color); }
+    .log-item.green { border-left-color: #4ade80; }
+    .log-item.kill { background: rgba(225, 29, 72, 0.15); font-weight: bold; }
+    .log-item.king { background: rgba(234, 179, 8, 0.2); font-weight: bold; border-left-color: #facc15; }
+
+    .badge-turn {
+      font-size: 0.74rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 800;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>👑 4-WAY CHESS • PIXEL AI BATTLE</h1>
+    <p class="subtitle">Đồ họa Pixel Art • Bàn cờ chuẩn xanh-trắng cắt góc • 4 Phong cách AI tự đối đầu</p>
+  </header>
+
+  <div class="main-layout">
+
+    <!-- BÀN CỜ 4-WAY CHESS THEO HÌNH THỰC TẾ -->
+    <div class="arena-container">
+      <div class="view-toggles">
+        <button id="view-2d" class="btn-toggle active">📐 Góc Nhìn 2D Trực Diện</button>
+        <button id="view-3d" class="btn-toggle">🎲 Góc Nghiêng 3D (Y Hệt Hình Chụp)</button>
+      </div>
+
+      <div id="board-frame" class="board-frame">
+        <div id="board" class="board-grid"></div>
+        <!-- CHỮ 4-WAY CHESS IN Ở DƯỚI NHƯ BÀN THẬT -->
+        <div class="corner-label bottom">4-WAY CHESS</div>
+      </div>
+    </div>
+
+    <!-- BẢNG ĐIỀU KHIỂN & 4 BOT THI ĐẤU -->
+    <div class="dashboard">
+
+      <!-- THÔNG TIN 4 BOT -->
+      <div class="card">
+        <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; display:flex; justify-content:space-between;">
+          <span>🤖 4 ĐỐI THỦ AI</span>
+          <span id="turn-badge" class="badge-turn" style="background:var(--red-color);">LƯỢT: ĐỎ</span>
+        </h3>
+        
+        <div class="player-roster">
+          
+          <!-- BOT ĐỎ -->
+          <div id="pbox-red" class="player-box red active">
+            <div class="player-top">
+              <span class="player-label" style="color:var(--red-color);">🔴 Phe Đỏ (Nam)</span>
+              <span id="score-red" class="player-score">0</span>
+            </div>
+            <select id="ai-red" class="ai-select">
+              <option value="aggressive" selected>AI: Cuồng Công (Aggressive)</option>
+              <option value="center">AI: Chiếm Trung Tâm (Center)</option>
+              <option value="assassin">AI: Săn Vua (Assassin)</option>
+              <option value="random">AI: Ngẫu Nhiên (Random)</option>
+              <option value="human">Người Chơi (Click)</option>
+            </select>
+            <div id="captures-red" class="captured-pieces"></div>
+          </div>
+
+          <!-- BOT LAM -->
+          <div id="pbox-blue" class="player-box blue">
+            <div class="player-top">
+              <span class="player-label" style="color:#60a5fa;">🔵 Phe Lam (Tây)</span>
+              <span id="score-blue" class="player-score">0</span>
+            </div>
+            <select id="ai-blue" class="ai-select">
+              <option value="aggressive">AI: Cuồng Công (Aggressive)</option>
+              <option value="center" selected>AI: Chiếm Trung Tâm (Center)</option>
+              <option value="assassin">AI: Săn Vua (Assassin)</option>
+              <option value="random">AI: Ngẫu Nhiên (Random)</option>
+              <option value="human">Người Chơi (Click)</option>
+            </select>
+            <div id="captures-blue" class="captured-pieces"></div>
+          </div>
+
+          <!-- BOT VÀNG -->
+          <div id="pbox-yellow" class="player-box yellow">
+            <div class="player-top">
+              <span class="player-label" style="color:var(--yellow-color);">🟡 Phe Vàng (Bắc)</span>
+              <span id="score-yellow" class="player-score">0</span>
+            </div>
+            <select id="ai-yellow" class="ai-select">
+              <option value="aggressive">AI: Cuồng Công (Aggressive)</option>
+              <option value="center">AI: Chiếm Trung Tâm (Center)</option>
+              <option value="assassin" selected>AI: Săn Vua (Assassin)</option>
+              <option value="random">AI: Ngẫu Nhiên (Random)</option>
+              <option value="human">Người Chơi (Click)</option>
+            </select>
+            <div id="captures-yellow" class="captured-pieces"></div>
+          </div>
+
+          <!-- BOT LỤC -->
+          <div id="pbox-green" class="player-box green">
+            <div class="player-top">
+              <span class="player-label" style="color:#4ade80;">🟢 Phe Lục (Đông)</span>
+              <span id="score-green" class="player-score">0</span>
+            </div>
+            <select id="ai-green" class="ai-select">
+              <option value="aggressive">AI: Cuồng Công (Aggressive)</option>
+              <option value="center">AI: Chiếm Trung Tâm (Center)</option>
+              <option value="assassin">AI: Săn Vua (Assassin)</option>
+              <option value="random" selected>AI: Ngẫu Nhiên (Random)</option>
+              <option value="human">Người Chơi (Click)</option>
+            </select>
+            <div id="captures-green" class="captured-pieces"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ĐIỀU KHIỂN TRẬN ĐẤU -->
+      <div class="card">
+        <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">🎮 ĐIỀU KHIỂN & TỐC ĐỘ</h3>
+        
+        <div class="controls-row">
+          <button id="btn-auto" class="btn btn-main">
+            ▶️ TỰ ĐỘNG CHO 4 AI ĐẤU
+          </button>
+          <button id="btn-step" class="btn">
+            ⏭️ Đi 1 Nước (Step)
+          </button>
+          <button id="btn-reset" class="btn btn-reset">
+            🔄 Bắt Đầu Lại
+          </button>
+        </div>
+
+        <div class="speed-slider-wrap">
+          <span>Tốc độ AI: <strong id="speed-label">350ms</strong></span>
+          <input type="range" id="speed-slider" min="80" max="1200" step="20" value="350">
+        </div>
+      </div>
+
+      <!-- NHẬT KÝ CHIẾN ĐẤU -->
+      <div class="card">
+        <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">📜 NHẬT KÝ CHIẾN ĐẤU (LOG)</h3>
+        <div id="log-box" class="log-container"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    /* =====================================================================
+       1. PIXEL ART ENGINE: TẠO SPRITE PIXEL TỪNG QUÂN CỜ 16x16
+       ===================================================================== */
+    // Bảng màu sắc nét cho từng phe
+    const COLOR_PALETTES = {
+      red: {
+        outline: '#450a0a',
+        main: '#e11d48',
+        highlight: '#fda4af',
+        shadow: '#9f1239'
+      },
+      blue: {
+        outline: '#0f172a',
+        main: '#2563eb',
+        highlight: '#93c5fd',
+        shadow: '#1e40af'
+      },
+      yellow: {
+        outline: '#422006',
+        main: '#eab308',
+        highlight: '#fef08a',
+        shadow: '#a16207'
+      },
+      green: {
+        outline: '#052e16',
+        main: '#16a34a',
+        highlight: '#86efac',
+        shadow: '#14532d'
+      },
+      dead: {
+        outline: '#1e293b',
+        main: '#64748b',
+        highlight: '#cbd5e1',
+        shadow: '#334155'
+      }
+    };
+
+    // Ma trận Pixel 16x16 cho từng quân cờ
+    // 0: Trống, 1: Viền, 2: Thân chính, 3: Ánh sáng, 4: Đổ bóng
+    const PIXEL_TEMPLATES = {
+      // TỐT (Pawn)
+      p: [
+        [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,3,2,2,2,1,0,0,0,0,0],
+        [0,0,0,0,0,1,3,3,2,4,1,0,0,0,0,0],
+        [0,0,0,0,0,1,2,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,1,3,2,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,1,3,4,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,3,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,0,1,3,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,0,1,3,2,2,2,4,4,4,4,1,0,0,0],
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ],
+      // XE (Rook)
+      r: [
+        [0,0,1,1,0,1,1,0,1,1,0,1,1,0,0,0],
+        [0,0,1,3,1,1,3,1,1,3,1,1,4,1,0,0],
+        [0,0,1,3,2,2,2,2,2,4,4,4,4,1,0,0],
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,0,0,1,3,2,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,1,3,2,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,1,3,2,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,1,3,2,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,1,3,2,2,4,4,1,0,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,1,3,2,2,2,2,4,4,4,4,1,0,0,0],
+        [0,0,1,3,2,2,2,2,4,4,4,4,1,0,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ],
+      // MÃ (Knight)
+      n: [
+        [0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0],
+        [0,0,0,1,3,3,1,1,3,3,1,0,0,0,0,0],
+        [0,0,1,3,2,2,2,2,2,2,4,1,0,0,0,0],
+        [0,1,3,2,2,1,2,2,2,2,4,1,0,0,0,0],
+        [0,1,3,2,2,2,2,2,2,2,4,1,1,0,0,0],
+        [0,1,3,2,2,1,1,1,2,2,2,4,1,0,0,0],
+        [0,0,1,1,1,0,0,1,3,2,2,4,1,0,0,0],
+        [0,0,0,0,0,0,1,3,2,2,4,4,1,0,0,0],
+        [0,0,0,0,0,1,3,2,2,4,4,4,1,0,0,0],
+        [0,0,0,0,1,3,2,2,2,4,4,4,1,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,1,3,2,2,2,2,4,4,4,4,4,1,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ],
+      // TƯỢNG (Bishop)
+      b: [
+        [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,1,3,3,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,3,2,2,4,1,0,0,0,0,0],
+        [0,0,0,0,1,3,2,1,2,2,4,1,0,0,0,0],
+        [0,0,0,0,1,3,1,2,2,4,4,1,0,0,0,0],
+        [0,0,0,0,1,3,2,2,4,4,4,1,0,0,0,0],
+        [0,0,0,0,0,1,3,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,3,2,4,4,1,0,0,0,0,0],
+        [0,0,0,0,1,3,2,2,4,4,4,1,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,1,3,2,2,2,4,4,4,4,4,1,0,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ],
+      // HẬU (Queen)
+      q: [
+        [0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0],
+        [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0],
+        [0,1,3,1,1,3,1,1,3,1,1,4,1,1,4,1],
+        [0,0,1,3,2,2,2,2,2,4,4,4,4,4,1,0],
+        [0,0,1,3,2,2,2,2,2,4,4,4,4,4,1,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,0,0,1,3,2,2,2,4,4,1,0,0,0,0],
+        [0,0,0,0,1,3,2,2,2,4,4,1,0,0,0,0],
+        [0,0,0,1,3,2,2,2,4,4,4,4,1,0,0,0],
+        [0,0,1,3,2,2,2,2,4,4,4,4,4,1,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+        [1,3,2,2,2,2,2,2,4,4,4,4,4,4,4,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ],
+      // VUA (King)
+      k: [
+        [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,1,1,1,3,4,1,1,1,0,0,0,0],
+        [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,1,1,1,3,2,2,4,1,1,1,0,0,0],
+        [0,0,1,3,2,2,2,2,2,4,4,4,4,1,0,0],
+        [0,1,3,2,2,2,2,2,2,4,4,4,4,4,1,0],
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,0,0,1,3,2,2,2,4,4,4,1,0,0,0,0],
+        [0,0,0,1,3,2,2,2,4,4,4,1,0,0,0,0],
+        [0,0,1,3,2,2,2,2,4,4,4,4,1,0,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [1,3,2,2,2,2,2,2,4,4,4,4,4,4,1,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      ]
+    };
+
+    // Bộ nhớ cache chứa Data URL của các sprite pixel art
+    const PIXEL_SPRITES = {};
+
+    function generatePixelArtDataURL(pieceType, colorName) {
+      const cacheKey = `${pieceType}_${colorName}`;
+      if (PIXEL_SPRITES[cacheKey]) return PIXEL_SPRITES[cacheKey];
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 16;
+      canvas.height = 16;
+      const ctx = canvas.getContext('2d');
+      const palette = COLOR_PALETTES[colorName] || COLOR_PALETTES.red;
+      const matrix = PIXEL_TEMPLATES[pieceType];
+
+      if (!matrix) return '';
+
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          const val = matrix[y][x];
+          if (val === 0) continue;
+          if (val === 1) ctx.fillStyle = palette.outline;
+          else if (val === 2) ctx.fillStyle = palette.main;
+          else if (val === 3) ctx.fillStyle = palette.highlight;
+          else if (val === 4) ctx.fillStyle = palette.shadow;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+
+      const url = canvas.toDataURL('image/png');
+      PIXEL_SPRITES[cacheKey] = url;
+      return url;
+    }
+
+    /* =====================================================================
+       2. QUY TẮC BÀN CỜ 14x14 (160 Ô CHƠI TIÊU CHUẨN 4-WAY CHESS)
+       ===================================================================== */
+    const BOARD_SIZE = 14;
+    const PLAYERS = ['red', 'blue', 'yellow', 'green'];
+    const PLAYER_NAMES = {
+      red: 'Đỏ',
+      blue: 'Lam',
+      yellow: 'Vàng',
+      green: 'Lục'
+    };
+
+    const PIECE_NAMES_VI = {
+      p: 'Tốt',
+      n: 'Mã',
+      b: 'Tượng',
+      r: 'Xe',
+      q: 'Hậu',
+      k: 'Vua'
+    };
+
+    const PIECE_VALUES = {
+      p: 1,
+      n: 3,
+      b: 5,
+      r: 5,
+      q: 9,
+      k: 20
+    };
+
+    function isPlayableSquare(r, c) {
+      if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) return false;
+      // 4 góc 3x3 bị khuyết
+      if (r < 3 && c < 3) return false;
+      if (r < 3 && c >= 11) return false;
+      if (r >= 11 && c < 3) return false;
+      if (r >= 11 && c >= 11) return false;
+      return true;
+    }
+
+    /* =====================================================================
+       3. TRẠNG THÁI GAME & XẾP QUÂN KHỞI ĐẦU
+       ===================================================================== */
+    let board = [];
+    let currentTurnIndex = 0;
+    let scores = { red: 0, blue: 0, yellow: 0, green: 0 };
+    let captures = { red: [], blue: [], yellow: [], green: [] };
+    let isAutoPlaying = false;
+    let selectedSquare = null;
+    let validMovesForSelected = [];
+    let lastMove = null;
+
+    function initGame() {
+      board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+      scores = { red: 0, blue: 0, yellow: 0, green: 0 };
+      captures = { red: [], blue: [], yellow: [], green: [] };
+      currentTurnIndex = 0;
+      selectedSquare = null;
+      validMovesForSelected = [];
+      lastMove = null;
+
+      // 1. PHE ĐỎ (Nam - Hàng 13 & 12, cols 3..10)
+      const redPieces = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
+      for (let i = 0; i < 8; i++) {
+        board[13][3 + i] = { color: 'red', type: redPieces[i] };
+        board[12][3 + i] = { color: 'red', type: 'p' };
+      }
+
+      // 2. PHE LAM (Tây - Cột 0 & 1, rows 3..10)
+      const bluePieces = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
+      for (let i = 0; i < 8; i++) {
+        board[3 + i][0] = { color: 'blue', type: bluePieces[i] };
+        board[3 + i][1] = { color: 'blue', type: 'p' };
+      }
+
+      // 3. PHE VÀNG (Bắc - Hàng 0 & 1, cols 3..10)
+      const yellowPieces = ['r', 'n', 'b', 'k', 'q', 'b', 'n', 'r'];
+      for (let i = 0; i < 8; i++) {
+        board[0][10 - i] = { color: 'yellow', type: yellowPieces[i] };
+        board[1][10 - i] = { color: 'yellow', type: 'p' };
+      }
+
+      // 4. PHE LỤC (Đông - Cột 13 & 12, rows 3..10)
+      const greenPieces = ['r', 'n', 'b', 'k', 'q', 'b', 'n', 'r'];
+      for (let i = 0; i < 8; i++) {
+        board[10 - i][13] = { color: 'green', type: greenPieces[i] };
+        board[10 - i][12] = { color: 'green', type: 'p' };
+      }
+
+      renderBoard();
+      updateDashboard();
+      addLog("Bàn cờ 4-Way Chess đã xếp xong. 4 AI sẵn sàng xuất trận!", "red");
+    }
+
+    /* =====================================================================
+       4. BỘ TÍNH TOÁN NƯỚC ĐI HỢP LỆ (LEGAL MOVE GENERATOR)
+       ===================================================================== */
+    function getValidMoves(r, c) {
+      const piece = board[r][c];
+      if (!piece) return [];
+      const moves = [];
+      const color = piece.color;
+
+      // 1. TỐT (Pawn)
+      if (piece.type === 'p') {
+        let fR = 0, fC = 0, startCond = false;
+        if (color === 'red') { fR = -1; startCond = (r === 12); }
+        else if (color === 'blue') { fC = 1; startCond = (c === 1); }
+        else if (color === 'yellow') { fR = 1; startCond = (r === 1); }
+        else if (color === 'green') { fC = -1; startCond = (c === 12); }
+
+        // Tiến 1 bước
+        const nr1 = r + fR, nc1 = c + fC;
+        if (isPlayableSquare(nr1, nc1) && !board[nr1][nc1]) {
+          moves.push({ r: nr1, c: nc1 });
+          // Nước đầu tiến 2 bước
+          const nr2 = r + 2 * fR, nc2 = c + 2 * fC;
+          if (startCond && isPlayableSquare(nr2, nc2) && !board[nr2][nc2]) {
+            moves.push({ r: nr2, c: nc2 });
+          }
+        }
+
+        // Ăn chéo
+        let diags = [];
+        if (color === 'red' || color === 'yellow') diags = [[fR, -1], [fR, 1]];
+        else diags = [[-1, fC], [1, fC]];
+
+        for (const [dr, dc] of diags) {
+          const ar = r + dr, ac = c + dc;
+          if (isPlayableSquare(ar, ac)) {
+            const target = board[ar][ac];
+            if (target && target.color !== color) {
+              moves.push({ r: ar, c: ac, capture: true });
+            }
+          }
+        }
+      }
+
+      // 2. MÃ (Knight)
+      if (piece.type === 'n') {
+        const jumps = [
+          [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+          [1, -2], [1, 2], [2, -1], [2, 1]
+        ];
+        for (const [dr, dc] of jumps) {
+          const nr = r + dr, nc = c + dc;
+          if (isPlayableSquare(nr, nc)) {
+            const target = board[nr][nc];
+            if (!target) moves.push({ r: nr, c: nc });
+            else if (target.color !== color) moves.push({ r: nr, c: nc, capture: true });
+          }
+        }
+      }
+
+      // 3. TƯỢNG (Bishop) & HẬU (Queen)
+      if (piece.type === 'b' || piece.type === 'q') {
+        const diags = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+        for (const [dr, dc] of diags) {
+          let step = 1;
+          while (true) {
+            const nr = r + dr * step, nc = c + dc * step;
+            if (!isPlayableSquare(nr, nc)) break;
+            const target = board[nr][nc];
+            if (!target) {
+              moves.push({ r: nr, c: nc });
+            } else {
+              if (target.color !== color) moves.push({ r: nr, c: nc, capture: true });
+              break;
+            }
+            step++;
+          }
+        }
+      }
+
+      // 4. XE (Rook) & HẬU (Queen)
+      if (piece.type === 'r' || piece.type === 'q') {
+        const straights = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        for (const [dr, dc] of straights) {
+          let step = 1;
+          while (true) {
+            const nr = r + dr * step, nc = c + dc * step;
+            if (!isPlayableSquare(nr, nc)) break;
+            const target = board[nr][nc];
+            if (!target) {
+              moves.push({ r: nr, c: nc });
+            } else {
+              if (target.color !== color) moves.push({ r: nr, c: nc, capture: true });
+              break;
+            }
+            step++;
+          }
+        }
+      }
+
+      // 5. VUA (King)
+      if (piece.type === 'k') {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (isPlayableSquare(nr, nc)) {
+              const target = board[nr][nc];
+              if (!target) moves.push({ r: nr, c: nc });
+              else if (target.color !== color) moves.push({ r: nr, c: nc, capture: true });
+            }
+          }
+        }
+      }
+
+      return moves;
+    }
+
+    function getAllMovesForColor(color) {
+      const allMoves = [];
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const piece = board[r][c];
+          if (piece && piece.color === color) {
+            const moves = getValidMoves(r, c);
+            for (const m of moves) {
+              allMoves.push({
+                from: { r, c },
+                to: { r: m.r, c: m.c },
+                piece: piece,
+                capture: m.capture
+              });
+            }
+          }
+        }
+      }
+      return allMoves;
+    }
+
+    /* =====================================================================
+       5. THỰC HIỆN NƯỚC ĐI & XỬ LÝ LOẠI NGƯỜI CHƠI
+       ===================================================================== */
+    function executeMove(from, to) {
+      const movingPiece = board[from.r][from.c];
+      const targetPiece = board[to.r][to.c];
+      const activeColor = movingPiece.color;
+
+      let logText = `${PLAYER_NAMES[activeColor]} đi ${PIECE_NAMES_VI[movingPiece.type]} (${coordStr(from)} ➔ ${coordStr(to)})`;
+      let logType = activeColor;
+      let isKill = false;
+      let isKingSlay = false;
+
+      // Xử lý ăn quân
+      if (targetPiece) {
+        isKill = true;
+        const pts = PIECE_VALUES[targetPiece.type] || 1;
+        scores[activeColor] += pts;
+        captures[activeColor].push({ type: targetPiece.type, color: targetPiece.color });
+
+        logText = `💥 ${PLAYER_NAMES[activeColor]} ăn ${PIECE_NAMES_VI[targetPiece.type]} của ${PLAYER_NAMES[targetPiece.color]} (+${pts}đ)`;
+
+        // Hạ Vua
+        if (targetPiece.type === 'k') {
+          isKingSlay = true;
+          scores[activeColor] += 20;
+          logText = `👑⚔️ ${PLAYER_NAMES[activeColor]} ĐÃ HẠ GỤC VUA CỦA ${PLAYER_NAMES[targetPiece.color]} (+20đ)!`;
+          eliminatePlayer(targetPiece.color);
+        }
+      }
+
+      // Di chuyển
+      board[to.r][to.c] = movingPiece;
+      board[from.r][from.c] = null;
+
+      // Phong Hậu
+      if (movingPiece.type === 'p') {
+        let promo = false;
+        if (activeColor === 'red' && to.r <= 6) promo = true;
+        if (activeColor === 'yellow' && to.r >= 7) promo = true;
+        if (activeColor === 'blue' && to.c >= 7) promo = true;
+        if (activeColor === 'green' && to.c <= 6) promo = true;
+
+        if (promo) {
+          movingPiece.type = 'q';
+          logText += ` ⭐ Tốt phong HẬU!`;
+        }
+      }
+
+      lastMove = { from, to };
+      addLog(logText, logType, isKill, isKingSlay);
+
+      // Chuyển lượt
+      nextTurn();
+    }
+
+    function eliminatePlayer(color) {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (board[r][c] && board[r][c].color === color) {
+            board[r][c].color = 'dead';
+          }
+        }
+      }
+      addLog(`💀 Phe ${PLAYER_NAMES[color]} ĐÃ BỊ LOẠI KHỎI BÀN CỜ!`, color, false, true);
+    }
+
+    function nextTurn() {
+      let loops = 0;
+      do {
+        currentTurnIndex = (currentTurnIndex + 1) % 4;
+        loops++;
+      } while (!hasLivingKing(PLAYERS[currentTurnIndex]) && loops < 4);
+
+      selectedSquare = null;
+      validMovesForSelected = [];
+      renderBoard();
+      updateDashboard();
+
+      // Trigger AI
+      triggerAI();
+    }
+
+    function hasLivingKing(color) {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (board[r][c] && board[r][c].color === color && board[r][c].type === 'k') {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    /* =====================================================================
+       6. ĐỘNG CƠ ĐẤU AI THEO 4 PHONG CÁCH
+       ===================================================================== */
+    function evaluateMove(move, strategy) {
+      let score = 0;
+      const target = board[move.to.r][move.to.c];
+
+      // 1. Ăn quân
+      if (target) {
+        const val = PIECE_VALUES[target.type] || 0;
+        if (strategy === 'aggressive') score += val * 12;
+        else if (strategy === 'assassin' && target.type === 'k') score += 1000;
+        else score += val * 6;
+      }
+
+      // 2. Chiếm trung tâm
+      const distToCenter = Math.abs(move.to.r - 6.5) + Math.abs(move.to.c - 6.5);
+      if (strategy === 'center') {
+        score += (14 - distToCenter) * 3;
+      } else {
+        score += (14 - distToCenter) * 0.5;
+      }
+
+      // 3. Tiến tốt
+      if (move.piece.type === 'p') score += 2;
+
+      // 4. Random noise để các ván không lặp lại
+      score += Math.random() * 2.5;
+
+      return score;
+    }
+
+    function stepAI() {
+      const activeColor = PLAYERS[currentTurnIndex];
+      const botType = document.getElementById(`ai-${activeColor}`).value;
+
+      if (botType === 'human') return;
+
+      const availableMoves = getAllMovesForColor(activeColor);
+      if (availableMoves.length === 0) {
+        addLog(`Phe ${PLAYER_NAMES[activeColor]} hết nước đi hợp lệ. Bỏ qua!`, activeColor);
+        nextTurn();
+        return;
+      }
+
+      let chosenMove = null;
+      if (botType === 'random') {
+        chosenMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+      } else {
+        let bestScore = -Infinity;
+        for (const m of availableMoves) {
+          const score = evaluateMove(m, botType);
+          if (score > bestScore) {
+            bestScore = score;
+            chosenMove = m;
+          }
+        }
+      }
+
+      if (chosenMove) {
+        executeMove(chosenMove.from, chosenMove.to);
+      }
+    }
+
+    function triggerAI() {
+      const activeColor = PLAYERS[currentTurnIndex];
+      const botType = document.getElementById(`ai-${activeColor}`).value;
+
+      if (isAutoPlaying || botType !== 'human') {
+        const speed = parseInt(document.getElementById('speed-slider').value);
+        setTimeout(() => {
+          if (isAutoPlaying || botType !== 'human') {
+            stepAI();
+          }
+        }, speed);
+      }
+    }
+
+    /* =====================================================================
+       7. VẼ GIAO DIỆN & TƯƠNG TÁC NGƯỜI DÙNG
+       ===================================================================== */
+    function renderBoard() {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const sq = document.createElement('div');
+          sq.className = 'square';
+          sq.dataset.row = r;
+          sq.dataset.col = c;
+
+          if (!isPlayableSquare(r, c)) {
+            sq.classList.add('invalid');
+          } else {
+            sq.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+            sq.addEventListener('click', () => onSquareClick(r, c));
+
+            // Nước đi trước đó
+            if (lastMove && ((lastMove.from.r === r && lastMove.from.c === c) || (lastMove.to.r === r && lastMove.to.c === c))) {
+              sq.classList.add('last-moved');
+            }
+
+            // Ô đang chọn
+            if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) {
+              sq.classList.add('selected');
+            }
+
+            // Gợi ý nước đi
+            if (validMovesForSelected.some(m => m.r === r && m.c === c)) {
+              sq.classList.add(board[r][c] ? 'capture-target' : 'move-target');
+            }
+
+            // Vẽ quân cờ Pixel Art
+            const piece = board[r][c];
+            if (piece) {
+              const img = document.createElement('img');
+              img.className = 'pixel-piece';
+              img.src = generatePixelArtDataURL(piece.type, piece.color);
+              img.alt = `${piece.color} ${piece.type}`;
+              sq.appendChild(img);
+            }
+          }
+
+          boardEl.appendChild(sq);
+        }
+      }
+    }
+
+    function updateDashboard() {
+      const activeColor = PLAYERS[currentTurnIndex];
+
+      PLAYERS.forEach(color => {
+        const box = document.getElementById(`pbox-${color}`);
+        const scoreEl = document.getElementById(`score-${color}`);
+        const capEl = document.getElementById(`captures-${color}`);
+
+        scoreEl.textContent = scores[color];
+
+        // Vẽ các quân pixel đã ăn được
+        capEl.innerHTML = '';
+        captures[color].forEach(cap => {
+          const img = document.createElement('img');
+          img.className = 'captured-icon';
+          img.src = generatePixelArtDataURL(cap.type, cap.color);
+          capEl.appendChild(img);
+        });
+
+        if (color === activeColor) {
+          box.classList.add('active');
+        } else {
+          box.classList.remove('active');
+        }
+      });
+
+      const badge = document.getElementById('turn-badge');
+      badge.textContent = `LƯỢT: ${PLAYER_NAMES[activeColor].toUpperCase()}`;
+      badge.style.backgroundColor = `var(--${activeColor}-color)`;
+    }
+
+    function onSquareClick(r, c) {
+      const activeColor = PLAYERS[currentTurnIndex];
+      const botType = document.getElementById(`ai-${activeColor}`).value;
+
+      if (botType !== 'human' || isAutoPlaying) return;
+
+      const piece = board[r][c];
+
+      // Đã chọn quân và click ô đích
+      if (selectedSquare) {
+        const isTarget = validMovesForSelected.find(m => m.r === r && m.c === c);
+        if (isTarget) {
+          executeMove(selectedSquare, { r, c });
+          return;
+        }
+      }
+
+      // Chọn quân của mình
+      if (piece && piece.color === activeColor) {
+        selectedSquare = { r, c };
+        validMovesForSelected = getValidMoves(r, c);
+      } else {
+        selectedSquare = null;
+        validMovesForSelected = [];
+      }
+      renderBoard();
+    }
+
+    function coordStr(pos) {
+      const cols = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n'];
+      return `${cols[pos.c]}${14 - pos.r}`;
+    }
+
+    function addLog(msg, color = 'red', isKill = false, isKing = false) {
+      const box = document.getElementById('log-box');
+      const div = document.createElement('div');
+      div.className = `log-item ${color} ${isKill ? 'kill' : ''} ${isKing ? 'king' : ''}`;
+      div.textContent = msg;
+      box.prepend(div);
+    }
+
+    /* =====================================================================
+       8. NÚT ĐIỀU KHIỂN & CHUYỂN GÓC NHÌN (2D / 3D ISOMETRIC)
+       ===================================================================== */
+    const autoBtn = document.getElementById('btn-auto');
+    const stepBtn = document.getElementById('btn-step');
+    const resetBtn = document.getElementById('btn-reset');
+    const speedSlider = document.getElementById('speed-slider');
+    const speedLabel = document.getElementById('speed-label');
+
+    const view2dBtn = document.getElementById('view-2d');
+    const view3dBtn = document.getElementById('view-3d');
+    const boardFrame = document.getElementById('board-frame');
+
+    // Chuyển góc nhìn 2D / 3D Isometric giống hệt ảnh thực tế
+    view2dBtn.addEventListener('click', () => {
+      view2dBtn.classList.add('active');
+      view3dBtn.classList.remove('active');
+      boardFrame.classList.remove('isometric');
+    });
+
+    view3dBtn.addEventListener('click', () => {
+      view3dBtn.classList.add('active');
+      view2dBtn.classList.remove('active');
+      boardFrame.classList.add('isometric');
+    });
+
+    autoBtn.addEventListener('click', () => {
+      isAutoPlaying = !isAutoPlaying;
+      if (isAutoPlaying) {
+        autoBtn.innerHTML = '⏸️ TẠM DỪNG AI';
+        autoBtn.classList.add('running');
+        triggerAI();
+      } else {
+        autoBtn.innerHTML = '▶️ TỰ ĐỘNG CHO 4 AI ĐẤU';
+        autoBtn.classList.remove('running');
+      }
+    });
+
+    stepBtn.addEventListener('click', () => {
+      if (!isAutoPlaying) stepAI();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Khởi tạo lại ván đấu mới?')) {
+        initGame();
+      }
+    });
+
+    speedSlider.addEventListener('input', (e) => {
+      speedLabel.textContent = `${e.target.value}ms`;
+    });
+
+    // Khởi chạy
+    initGame();
+  </script>
+</body>
+</html>

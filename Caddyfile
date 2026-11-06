@@ -1,0 +1,5 @@
+# Caddy tự xin và gia hạn chứng chỉ HTTPS cho tên miền trong biến DOMAIN
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy muse:5000
+}

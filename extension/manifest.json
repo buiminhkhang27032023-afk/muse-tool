@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Muse AI Web Bridge Extension",
+  "version": "2.6",
+  "description": "Nối Muse, ChatGPT, Gemini, Claude, Grok với Tool Triều Đình và Sân Chơi",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://muse.ai/*",
+    "*://*.muse.ai/*",
+    "*://chatgpt.com/*",
+    "*://*.chatgpt.com/*",
+    "*://chat.openai.com/*",
+    "*://gemini.google.com/*",
+    "*://claude.ai/*",
+    "*://grok.com/*",
+    "*://x.com/i/grok*",
+    "http://localhost:5000/*",
+    "http://127.0.0.1:5000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://muse.ai/*",
+        "*://*.muse.ai/*",
+        "*://chatgpt.com/*",
+        "*://*.chatgpt.com/*",
+        "*://chat.openai.com/*",
+        "*://gemini.google.com/*",
+        "*://claude.ai/*",
+        "*://grok.com/*",
+        "*://x.com/i/grok*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Triều Đình Muse",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

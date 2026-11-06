@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse AI — Video Automation Studio Tool</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .pulse-indicator {
+            animation: pulse-slow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f17] text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-gray-800/80 bg-[#111622]/90 backdrop-blur sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+        <div class="flex items-center space-x-3.5">
+            <div class="relative">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 p-[2px] shadow-lg shadow-indigo-500/20">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=MuseAgent&backgroundColor=1e1b4b" 
+                         alt="Muse Avatar" class="w-full h-full rounded-full object-cover bg-gray-900" id="headerAvatar">
+                </div>
+                <span id="statusPing" class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-[#111622]"></span>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-base font-bold text-white tracking-wide">MUSE AI TOOL</h1>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">AGENT BRIDGE</span>
+                </div>
+                <p class="text-xs text-gray-400">Đồng bộ trực tiếp với tab web <span class="text-gray-300 font-mono">muse.ai</span></p>
+            </div>
+        </div>
+
+        <!-- Connection Status & Bridge Action -->
+        <div class="flex items-center space-x-3">
+            <div id="statusBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span class="w-2 h-2 rounded-full bg-amber-400 pulse-indicator"></span>
+                <span id="statusText">Đang chờ tab muse.ai</span>
+            </div>
+
+            <a href="/trieu-dinh" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-700 hover:bg-red-600 text-white">🐉 Triều Đình</a>
+            <a href="/jarvis" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white">🤖 JARVIS</a>
+            <button onclick="openBridgeModal()" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 transition-all">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                </svg>
+                <span>Nối dây vào Web Muse</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Chat Workspace -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col justify-between overflow-hidden">
+        
+        <!-- Messages Area -->
+        <div id="chatBox" class="flex-1 overflow-y-auto space-y-4 pr-2 pb-6 min-h-[480px]">
+            <!-- Welcome message -->
+            <div class="flex items-start space-x-3 bg-gray-900/40 border border-gray-800/60 rounded-2xl p-5 mb-4 shadow-sm">
+                <div class="w-9 h-9 rounded-full bg-indigo-900/60 flex items-center justify-center shrink-0 border border-indigo-700/40 text-lg">
+                    🦜
+                </div>
+                <div class="text-sm space-y-2 leading-relaxed text-gray-300">
+                    <div class="font-semibold text-white flex items-center space-x-2">
+                        <span>Muse Assistant</span>
+                        <span class="text-[11px] font-normal text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded">6 Bước Tự Động</span>
+                    </div>
+                    <p>Chào bạn! Tool chat này đã được nối sẵn sàng. Khi bạn gõ tin nhắn/prompt ở đây, lệnh sẽ <strong>tự động chuyển vào tab web muse.ai</strong>, Muse sẽ nhận lệnh và chạy quy trình làm video ngay trước mắt bạn!</p>
+                    <div class="pt-2 flex flex-wrap gap-2 text-xs">
+                        <button onclick="setPrompt('Làm video TikTok 60 giây chủ đề: Phong tục ăn hỏi miền Bắc theo 6 bước')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700/80 border border-gray-700 rounded-lg text-gray-300 hover:text-white transition">
+                            💡 Phong tục ăn hỏi miền Bắc (60s)
+                        </button>
+                        <button onclick="setPrompt('Tạo kịch bản video TikTok 60 giây chủ đề: Top 3 công nghệ AI đáng sợ nhất 2026')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700/80 border border-gray-700 rounded-lg text-gray-300 hover:text-white transition">
+                            💡 Top 3 AI đáng sợ nhất 2026
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Dynamic messages injected here -->
+        </div>
+
+        <!-- Input Bar Area -->
+        <div class="mt-3 pt-3 border-t border-gray-800/80">
+            <form id="chatForm" onsubmit="handleSend(event)" class="relative flex items-end bg-[#131b2e] border border-gray-700/80 rounded-2xl focus-within:border-indigo-500/80 focus-within:ring-1 focus-within:ring-indigo-500/80 transition-all shadow-xl">
+                <textarea id="promptInput" rows="2" 
+                          placeholder="Nhập prompt hoặc chủ đề video bạn muốn Muse xử lý... (Nhấn Enter để gửi, Shift+Enter xuống dòng)" 
+                          class="w-full bg-transparent text-gray-100 placeholder-gray-500 text-sm p-4 pr-24 focus:outline-none resize-none max-h-36"></textarea>
+                
+                <div class="absolute right-3 bottom-3 flex items-center space-x-2">
+                    <button type="submit" id="sendBtn" 
+                            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center space-x-1.5 shadow-md shadow-indigo-600/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span>Gửi</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+            <div class="flex items-center justify-between text-[11px] text-gray-500 px-2 mt-2">
+                <span>Chạy trực tiếp từ thư mục <code class="text-gray-400">D:\tool muse</code></span>
+                <span>Phiên bản: 1.1 (Sync Bridge Realtime)</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Hướng Dẫn Kết Nối Cầu Nối Muse Bridge -->
+    <div id="bridgeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-[#131a2a] border border-gray-800 max-w-xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-[#162035]">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">🔌</span>
+                    <h3 class="font-bold text-white text-base">Cập nhật mã Cầu Nối Muse Bridge</h3>
+                </div>
+                <button onclick="closeBridgeModal()" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+            
+            <div class="p-6 space-y-4 text-xs text-gray-300 overflow-y-auto max-h-[70vh]">
+                <p>Nếu dùng cách dán Console (F12) trên tab `muse.ai`, hãy copy đoạn mã mới nhất bên dưới:</p>
+
+                <div class="relative bg-black/60 rounded-xl p-3 border border-gray-800 font-mono text-[11px] text-emerald-400 select-all overflow-x-auto max-h-48">
+                    <pre id="bridgeCodeDisplay">Đang tải mã...</pre>
+                    <button onclick="copyBridgeCode()" id="copyBtn" class="absolute top-2 right-2 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-sans font-medium transition">
+                        Copy mã
+                    </button>
+                </div>
+                <p class="text-gray-400">Mở F12 trên `muse.ai` $\rightarrow$ dán vào Console $\rightarrow$ Enter.</p>
+
+                <div class="p-3 bg-indigo-950/40 border border-indigo-800/40 rounded-xl text-indigo-300">
+                    💡 <strong>Nếu dùng Extension (`D:\muse_extension`):</strong> Vào <code>chrome://extensions</code> bấm nút xoay tròn (Reload/Update) để cập nhật code mới nhất!
+                </div>
+            </div>
+
+            <div class="px-6 py-3 border-t border-gray-800 bg-[#0e1422] flex justify-end">
+                <button onclick="closeBridgeModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-medium text-xs">
+                    Đã hiểu & Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script điều khiển Tool -->
+    <script>
+        let lastMessagesHash = "";
+        let bridgeCode = "";
+
+        fetch('/api/bridge-script')
+            .then(res => res.text())
+            .then(code => {
+                bridgeCode = code;
+                document.getElementById('bridgeCodeDisplay').innerText = code;
+            });
+
+        function openBridgeModal() {
+            document.getElementById('bridgeModal').classList.remove('hidden');
+        }
+
+        function closeBridgeModal() {
+            document.getElementById('bridgeModal').classList.add('hidden');
+        }
+
+        function copyBridgeCode() {
+            navigator.clipboard.writeText(bridgeCode).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.innerText = "Đã sao chép!";
+                btn.classList.add('bg-emerald-600');
+                setTimeout(() => {
+                    btn.innerText = "Copy mã";
+                    btn.classList.remove('bg-emerald-600');
+                }, 2000);
+            });
+        }
+
+        function setPrompt(text) {
+            const input = document.getElementById('promptInput');
+            input.value = text;
+            input.focus();
+        }
+
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                
+                const badge = document.getElementById('statusBadge');
+                const text = document.getElementById('statusText');
+                const ping = document.getElementById('statusPing');
+
+                if (data.bridge_connected) {
+                    badge.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                    text.innerText = "Web Muse: Đã kết nối 🟢";
+                    ping.className = "absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#111622]";
+                } else {
+                    badge.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+                    text.innerText = "Chờ tab muse.ai 🟡";
+                    ping.className = "absolute bottom-0 right-0 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-[#111622]";
+                }
+            } catch (err) {}
+        }
+
+        async function fetchMessages() {
+            try {
+                const res = await fetch('/api/messages');
+                const messages = await res.json();
+                const currentHash = JSON.stringify(messages);
+                
+                // Cập nhật khi có bất kỳ thay đổi nào (tin nhắn mới, đổi trạng thái, phản hồi mới)
+                if (currentHash !== lastMessagesHash) {
+                    renderMessages(messages);
+                    lastMessagesHash = currentHash;
+                }
+            } catch (err) {}
+        }
+
+        function renderMessages(messages) {
+            const chatBox = document.getElementById('chatBox');
+            const dynamicNodes = chatBox.querySelectorAll('.dynamic-msg');
+            dynamicNodes.forEach(n => n.remove());
+
+            messages.forEach(msg => {
+                const isUser = msg.role === 'user';
+                const div = document.createElement('div');
+                div.className = `dynamic-msg flex items-start space-x-3 ${isUser ? 'justify-end' : 'justify-start'}`;
+
+                if (isUser) {
+                    const statusText = msg.status === 'sent_to_web' ? 'Đã gửi tới Web Muse ✓' : 'Đang chuyển...';
+                    div.innerHTML = `
+                        <div class="max-w-[80%] bg-indigo-600/90 text-white rounded-2xl rounded-tr-sm p-4 shadow-md text-sm">
+                            <p class="whitespace-pre-wrap leading-relaxed">${escapeHtml(msg.text)}</p>
+                            <div class="flex items-center justify-end space-x-1.5 text-[10px] text-indigo-200/80 mt-1.5">
+                                <span class="font-medium">${statusText}</span>
+                                <span>•</span>
+                                <span>${new Date(msg.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-amber-600/30 border border-amber-500/40 flex items-center justify-center shrink-0 text-sm">
+                            🦜
+                        </div>
+                        <div class="max-w-[85%] bg-gray-900 border border-gray-800/80 text-gray-200 rounded-2xl rounded-tl-sm p-4 shadow-lg text-sm">
+                            <div class="flex items-center space-x-2 mb-1.5">
+                                <span class="font-semibold text-xs text-amber-400">Muse AI (Từ Web)</span>
+                                ${!msg.is_final ? '<span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded animate-pulse">Đang phản hồi...</span>' : ''}
+                            </div>
+                            <div class="whitespace-pre-wrap leading-relaxed text-gray-300">${escapeHtml(msg.text)}</div>
+                            <div class="text-[10px] text-gray-500 mt-2">
+                                ${new Date(msg.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
+                        </div>
+                    `;
+                }
+                chatBox.appendChild(div);
+            });
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        async function handleSend(e) {
+            e.preventDefault();
+            const input = document.getElementById('promptInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (res.ok) {
+                    input.value = '';
+                    fetchMessages();
+                }
+            } catch (err) {
+                alert("Lỗi kết nối tới Server cục bộ!");
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        document.getElementById('promptInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+            }
+        });
+
+        setInterval(checkStatus, 2000);
+        setInterval(fetchMessages, 800);
+        checkStatus();
+        fetchMessages();
+    </script>
+</body>
+</html>

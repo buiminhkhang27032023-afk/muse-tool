@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triều Đình Muse — Lục Bộ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{font-family:system-ui,"Segoe UI",sans-serif}
+  ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:#374151;border-radius:9999px}
+  .bubble{white-space:pre-wrap;line-height:1.55}
+</style>
+</head>
+<body class="bg-[#0b0f17] text-gray-100 h-screen flex flex-col">
+
+<header class="border-b border-gray-800 bg-[#111622] px-5 py-3 flex items-center justify-between gap-3">
+  <div class="flex items-center gap-3">
+    <div class="text-2xl">🐉</div>
+    <div>
+      <h1 class="font-bold text-white">Triều Đình Muse</h1>
+      <p class="text-xs text-gray-400">Chủ Nhân ra lệnh, Bệ Hạ ban chỉ dụ, Lục Bộ làm, kết quả tâu về</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <div id="statusBadge" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Đang chờ tab muse.ai</div>
+    <a href="/san-choi" class="px-3 py-1.5 text-xs rounded-lg bg-fuchsia-700 hover:bg-fuchsia-600 text-white">🎪 Sân Chơi</a>
+    <a href="/connect" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">➕ Nối trình duyệt</a>
+    <button onclick="openTabs()" class="px-3 py-1.5 text-xs rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white">🔗 Tab Muse</button>
+    <button onclick="openBrains()" class="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">🧠 Bộ não</button>
+    <a href="/lang" class="px-3 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-600 text-white">🏯 Làng 3D</a>
+    <a href="/chat" class="px-3 py-1.5 text-xs rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200">Chat thường</a>
+  </div>
+</header>
+
+<div class="flex-1 flex overflow-hidden">
+  <!-- cột trái: chỉ dụ + lịch sử -->
+  <aside class="w-80 shrink-0 border-r border-gray-800 flex flex-col">
+    <form id="askForm" class="p-4 border-b border-gray-800 space-y-2" onsubmit="ask(event)">
+      <label class="text-xs text-gray-400">Lệnh của Chủ Nhân</label>
+      <textarea id="q" rows="4" class="w-full bg-[#131b2e] border border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500" placeholder="VD: Khách spa muốn 5 video TikTok và chạy ads Facebook, ngân sách 10 triệu. Triều đình lập kế hoạch giúp ta."></textarea>
+      <label class="text-xs text-gray-400">Giao cho</label>
+      <select id="to" class="w-full bg-[#131b2e] border border-gray-700 rounded-lg p-2 text-sm"></select>
+      <button id="askBtn" class="w-full py-2 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-semibold disabled:opacity-40">Ban lệnh</button>
+      <p id="askErr" class="text-xs text-red-400 hidden"></p>
+    </form>
+    <div class="px-3 py-1.5 flex items-center justify-between border-b border-gray-800"><span class="text-xs text-gray-500">Lịch sử chỉ dụ</span><button onclick="clearAll()" class="text-xs text-gray-500 hover:text-red-400">🗑 Xóa sạch</button></div>
+    <div id="runList" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+  </aside>
+
+  <!-- chi tiết một chỉ dụ -->
+  <main id="detail" class="flex-1 overflow-y-auto p-5"></main>
+</div>
+
+<!-- Tab Muse: các trình duyệt / profile / tài khoản đã nối -->
+<div id="tabModal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+  <div class="bg-[#131a2a] border border-gray-800 w-full max-w-5xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+      <h3 class="font-bold">🔗 Các tab Muse đã nối (mỗi trình duyệt, profile hay tài khoản là một tab)</h3>
+      <button onclick="closeTabs()" class="text-2xl text-gray-400 hover:text-white leading-none">&times;</button>
+    </div>
+    <div class="p-4 overflow-y-auto text-sm">
+      <p class="text-xs text-gray-400 mb-3">Mở muse.ai ở bất kỳ trình duyệt hay profile Chrome nào, dán <code>muse_bridge.js</code> vào Console (hoặc cài extension), tab sẽ tự hiện ở đây. Gán vai cho từng tab, một tài khoản có thể giữ nhiều vai. Bấm "Nhận diện" để tab muse.ai tương ứng hiện huy hiệu to màu cam, nhìn là biết đó là tài khoản nào (mỗi tab cũng có huy hiệu nhỏ ở góc dưới trái và tên trong tiêu đề). Nhiều tab cùng một vai thì tab nào rảnh nhận trước. Tab chưa gán vai nhận việc của bộ chưa có tab riêng. Hạn mức là số lượt tối đa mỗi ngày (0 = không giới hạn); hết lượt thì Tool tự chuyển việc sang tab khác.</p>
+      <table class="w-full text-xs">
+        <thead><tr class="text-left text-gray-500"><th class="py-1">Tên gợi nhớ</th><th>Vai (tick được nhiều vai)</th><th>Trạng thái</th><th>Hôm nay</th><th>Hạn mức/ngày</th><th>Tạm nghỉ</th><th></th></tr></thead>
+        <tbody id="tabRows"></tbody>
+      </table>
+      <div class="mt-3"><button onclick="autoRoles()" class="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">⚡ Chia đều vai cho các tab đang nối</button> <span class="text-xs text-gray-500">(ghi đè vai hiện tại của các tab online)</span></div>
+      <p id="tabEmpty" class="text-gray-500 text-xs mt-3 hidden">Chưa có tab nào nối. Mở muse.ai và dán cầu nối.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Bộ não -->
+<div id="brainModal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+  <div class="bg-[#131a2a] border border-gray-800 w-full max-w-3xl rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+      <h3 class="font-bold">🧠 Bộ não từng phòng ban</h3>
+      <button onclick="closeBrains()" class="text-2xl text-gray-400 hover:text-white leading-none">&times;</button>
+    </div>
+    <div class="flex flex-1 overflow-hidden">
+      <div id="brainTabs" class="w-44 border-r border-gray-800 p-2 space-y-1 overflow-y-auto"></div>
+      <div class="flex-1 p-4 flex flex-col gap-2">
+        <p class="text-xs text-gray-400">Đây là đoạn chữ được dán vào đầu mỗi lần giao việc cho phòng này. Sửa cho đúng cách làm thật của phòng, rồi lưu. Có hiệu lực từ lần giao việc kế tiếp.</p>
+        <textarea id="brainText" class="flex-1 min-h-[300px] bg-[#0e1422] border border-gray-700 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-indigo-500"></textarea>
+        <div class="flex items-center gap-3"><button onclick="saveBrain()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm">Lưu</button><span id="brainMsg" class="text-xs text-emerald-400"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const AG = {noicac:['Bệ Hạ','#f87171'],chu:['Chủ Nhân','#fbbf24'],cong:['Công Bộ','#60a5fa'],le:['Lễ Bộ','#f472b6'],ho:['Hộ Bộ','#34d399'],binh:['Binh Bộ','#fb923c'],hinh:['Hình Bộ','#c084fc'],lai:['Lại Bộ','#fbbf24'],vua:['Chủ Nhân','#fbbf24']};
+const KIND = {giao:'giao việc',hoi:'được hỏi',tra_loi:'hoàn thiện',chia_viec:'chia việc',tong_hop:'tổng hợp'};
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tabsNow = [], runs = [], sel = null, lastHash = '', openSteps = new Set(), brains = [], brainKey = null;
+
+document.getElementById('to').innerHTML = '<option value="auto">Bệ Hạ tự chia việc cho các bộ</option>' +
+  ['noicac','cong','le','ho','binh','hinh','lai'].map(k=>`<option value="${k}">${AG[k][0]} (hỏi thẳng, chỉ con này trả lời)</option>`).join('');
+
+async function status(){
+  try{
+    const d = await (await fetch('/api/status')).json();
+    const b = document.getElementById('statusBadge');
+    b.textContent = d.bridge_connected ? 'Web Muse: ' + (d.tab_count || 1) + ' tab đã nối 🟢' : 'Chờ tab muse.ai 🟡';
+    b.className = 'px-3 py-1.5 rounded-lg text-xs font-medium border ' + (d.bridge_connected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20');
+  }catch(e){}
+}
+async function ask(e){
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim(); if(!q) return;
+  const err = document.getElementById('askErr'); err.classList.add('hidden');
+  const btn = document.getElementById('askBtn'); btn.disabled = true;
+  try{
+    const r = await fetch('/api/court/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,to:document.getElementById('to').value})});
+    const d = await r.json();
+    if(!r.ok){ err.textContent = d.error || 'Lỗi'; err.classList.remove('hidden'); }
+    else { document.getElementById('q').value=''; sel = d.id; await load(true); }
+  }catch(x){ err.textContent='Không nối được server.'; err.classList.remove('hidden'); }
+  btn.disabled = false;
+}
+async function clearAll(){
+  if(!confirm('Hủy các chỉ dụ đang chạy và xóa toàn bộ lịch sử?')) return;
+  await fetch('/api/court/clear', {method:'POST'}); sel = null; openSteps.clear(); load(true);
+}
+async function cancelRun(id){ await fetch('/api/court/cancel/'+id,{method:'POST'}); load(true); }
+
+async function load(force){
+  try{
+    runs = await (await fetch('/api/court/runs')).json();
+    try{ tabsNow = await (await fetch('/api/court/tabs')).json(); }catch(e){}
+    const h = JSON.stringify([runs, tabsNow]);
+    if(!force && h === lastHash) return;
+    lastHash = h;
+    if(!sel && runs.length) sel = runs[0].id;
+    render();
+  }catch(e){}
+}
+const taskOf = s => { const a = String(s.ask || ''); const i = a.indexOf('\n'); const j = a.indexOf('\n\n', i + 1); return (i >= 0 ? a.slice(i + 1, j > 0 ? j : undefined) : a).replace(/\s+/g, ' ').trim(); };
+function boardHtml(){
+  const order = ['noicac','cong','le','ho','binh','hinh','lai'];
+  const cards = order.map(k => {
+    let running = null;
+    for(const r of runs){ if(r.status !== 'running') continue; for(const s of r.steps){ if(s.to === k && s.status === 'running') running = s; } }
+    const accts = tabsNow.filter(t => t.roles.includes(k) && t.state !== 'offline').map(t => t.label);
+    const nm = AG[k][0], col = AG[k][1];
+    let body;
+    if(running){
+      const waiting = !running.tab;
+      body = `<div class="${waiting?'text-amber-300':'text-emerald-300'} text-[11px] font-semibold">${waiting?'⏳ Chờ tab rảnh nhận việc':'🟡 Đang làm · tài khoản <b>'+esc(running.tab)+'</b>'}</div>
+        <div class="text-[11px] text-gray-300 mt-1 line-clamp-2">${esc(taskOf(running).slice(0,90))}</div>`;
+    } else {
+      body = `<div class="text-[11px] text-gray-500">⚪ Rảnh</div><div class="text-[11px] text-gray-600 mt-1">${accts.length ? 'Tài khoản: '+esc(accts.join(', ')) : 'chưa gán tab riêng (dùng tab tự do)'}</div>`;
+    }
+    return `<div class="rounded-xl border p-2.5 ${running?'border-emerald-600/60 bg-emerald-900/10':'border-gray-800 bg-gray-900/30'}"><div class="text-xs font-bold mb-1" style="color:${col}">${nm}</div>${body}</div>`;
+  }).join('');
+  return `<div class="max-w-3xl mx-auto mb-4"><div class="text-xs text-gray-500 mb-2">Đang giao cho con nào · tài khoản nào làm</div><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${cards}</div></div>`;
+}
+const stIcon = s => ({running:'⏳',done:'✅',error:'⚠️',cancelled:'⛔'}[s]||'');
+function render(){
+  document.getElementById('runList').innerHTML = runs.map(r=>`
+    <button onclick="sel='${r.id}';render()" class="w-full text-left p-2.5 rounded-lg text-xs ${r.id===sel?'bg-indigo-900/40 border border-indigo-700/50':'hover:bg-gray-800/60 border border-transparent'}">
+      <div class="flex justify-between text-gray-400"><span>${stIcon(r.status)} ${r.to==='auto'?'Bệ Hạ':AG[r.to][0]}</span><span>${new Date(r.started*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="text-gray-200 mt-1 line-clamp-2">${esc(r.question)}</div></button>`).join('') || '<p class="text-xs text-gray-500 p-3">Chưa có chỉ dụ nào.</p>';
+  const r = runs.find(x=>x.id===sel), d = document.getElementById('detail');
+  if(!r){ d.innerHTML = boardHtml() + '<div class="text-gray-500 text-sm mt-6 text-center">Ra lệnh ở cột trái. Mỗi phòng ban sẽ nhận bộ não riêng, làm việc và báo cáo lại ở đây.</div>'; return; }
+  const steps = r.steps.map(s=>{
+    const f = AG[s.from]||[s.from,'#999'], t = AG[s.to]||[s.to,'#999'];
+    const op = openSteps.has(s.id) ? 'open' : '';
+    return `<div class="border border-gray-800 rounded-xl p-4 bg-gray-900/40">
+      <div class="flex items-center gap-2 text-xs mb-2">
+        <span style="color:${f[1]}" class="font-semibold">${f[0]}</span><span class="text-gray-500">→</span>
+        <span style="color:${t[1]}" class="font-semibold">${t[0]}</span>
+        <span class="text-gray-500">· ${KIND[s.kind]||s.kind}</span>${s.tab?`<span class="px-1.5 rounded bg-gray-800 text-gray-300">tài khoản ${esc(s.tab)}</span>`:''}
+        <span class="ml-auto">${s.status==='running'?'<span class="animate-pulse text-indigo-300">Đang nghĩ…</span>':s.status==='done'?'<span class="text-emerald-400">xong</span>':'<span class="text-red-400">'+s.status+'</span>'}</span>
+      </div>
+      <details ${op} ontoggle="this.open?openSteps.add('${s.id}'):openSteps.delete('${s.id}')" class="mb-2"><summary class="text-xs text-gray-500 cursor-pointer">Việc được giao</summary><div class="bubble text-xs text-gray-400 mt-1 pl-3 border-l border-gray-700">${esc(s.ask)}</div></details>
+      <div class="bubble text-sm text-gray-200">${esc(s.reply) || '<span class="text-gray-600">…</span>'}</div></div>`;
+  }).join('');
+  d.innerHTML = boardHtml() + `<div class="max-w-3xl mx-auto space-y-4">
+    <div class="p-4 rounded-2xl bg-red-900/20 border border-red-800/40"><div class="text-xs text-red-300 mb-1">🐉 Lệnh của Chủ Nhân · giao cho ${r.to==='auto'?'Bệ Hạ':AG[r.to][0]}</div><div class="bubble text-sm">${esc(r.question)}</div>
+      ${r.status==='running'?`<button onclick="cancelRun('${r.id}')" class="mt-2 text-xs px-3 py-1 rounded bg-gray-800 hover:bg-gray-700">Hủy chỉ dụ</button>`:''}</div>
+    ${r.answer?`<div class="p-4 rounded-2xl bg-emerald-900/20 border border-emerald-700/40"><div class="text-xs text-emerald-300 mb-1">📜 Bản tâu dâng Chủ Nhân</div><div class="bubble text-sm">${esc(r.answer)}</div></div>`:''}
+    ${r.error?`<div class="p-3 rounded-xl bg-red-900/30 border border-red-700/40 text-sm text-red-200">⚠️ ${esc(r.error)}</div>`:''}
+    <div class="text-xs text-gray-500">Diễn biến trong triều</div>${steps || '<div class="text-sm text-gray-500">Chưa có bước nào.</div>'}</div>`;
+}
+
+async function openBrains(){
+  brains = await (await fetch('/api/court/agents')).json();
+  document.getElementById('brainModal').classList.remove('hidden'); document.getElementById('brainModal').classList.add('flex');
+  pickBrain(brainKey || brains[0].key);
+}
+function closeBrains(){ document.getElementById('brainModal').classList.add('hidden'); document.getElementById('brainModal').classList.remove('flex'); }
+function pickBrain(k){
+  brainKey = k;
+  document.getElementById('brainTabs').innerHTML = brains.map(b=>`<button onclick="pickBrain('${b.key}')" class="w-full text-left px-3 py-2 rounded-lg text-sm ${b.key===k?'bg-indigo-700':'hover:bg-gray-800'}">${esc(b.ten)}<div class="text-[10px] text-gray-400">${esc(b.chuc)}</div></button>`).join('');
+  document.getElementById('brainText').value = brains.find(b=>b.key===k).text;
+  document.getElementById('brainMsg').textContent = '';
+}
+async function saveBrain(){
+  const text = document.getElementById('brainText').value;
+  const r = await fetch('/api/court/brain/'+brainKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+  if(r.ok){ brains.find(b=>b.key===brainKey).text = text; document.getElementById('brainMsg').textContent = 'Đã lưu ✓'; }
+}
+
+let tabList = [], tabOpen = false;
+const ROLE = [['noicac','Bệ Hạ'],['cong','Công Bộ'],['le','Lễ Bộ'],['ho','Hộ Bộ'],['binh','Binh Bộ'],['hinh','Hình Bộ'],['lai','Lại Bộ']];
+const TAB_ST = {idle:['🟢 Rảnh','text-emerald-400'],busy:['🟡 Đang làm','text-amber-300'],paused:['⏸ Tạm nghỉ','text-gray-400'],quota:['🔴 Hết lượt hôm nay','text-red-400'],offline:['⚪ Mất kết nối','text-gray-500']};
+function openTabs(){ tabOpen = true; const m = document.getElementById('tabModal'); m.classList.remove('hidden'); m.classList.add('flex'); loadTabs(true); }
+function closeTabs(){ tabOpen = false; const m = document.getElementById('tabModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
+async function loadTabs(force){
+  if(!tabOpen) return;
+  if(!force && document.activeElement && document.getElementById('tabRows').contains(document.activeElement)) return;
+  try{ tabList = await (await fetch('/api/court/tabs')).json(); }catch(e){ return; }
+  document.getElementById('tabEmpty').classList.toggle('hidden', tabList.length > 0);
+  document.getElementById('tabRows').innerHTML = tabList.map(t => `<tr class="border-t border-gray-800" data-id="${esc(t.id)}">
+    <td class="py-2 pr-2"><input data-f="label" value="${esc(t.label)}" maxlength="40" class="w-40 bg-[#0e1422] border border-gray-700 rounded px-2 py-1"><div class="text-[10px] text-gray-600 mt-0.5">${esc(t.id)}</div></td>
+    <td class="py-2"><div class="flex flex-wrap gap-1 max-w-[330px]">${ROLE.map(r => `<label class="px-2 py-0.5 rounded-full border cursor-pointer select-none ${t.roles.includes(r[0])?'bg-indigo-600 border-indigo-400 text-white':'border-gray-700 text-gray-400 hover:border-gray-500'}"><input data-f="role" type="checkbox" value="${r[0]}" class="hidden" ${t.roles.includes(r[0])?'checked':''}>${r[1]}</label>`).join('')}</div><div class="text-[10px] text-gray-500 mt-1">${t.roles.length?'':'Chưa gán vai: nhận việc của bộ chưa có tab riêng'}</div></td>
+    <td class="${TAB_ST[t.state][1]}">${TAB_ST[t.state][0]}</td>
+    <td>${t.done} lượt <button data-f="reset" class="text-gray-500 hover:text-white ml-1" title="Xóa đếm">↺</button></td>
+    <td><input data-f="limit" type="number" min="0" value="${t.limit}" class="w-16 bg-[#0e1422] border border-gray-700 rounded px-2 py-1"></td>
+    <td><input data-f="paused" type="checkbox" ${t.paused?'checked':''}></td>
+    <td>${t.state==='offline'?'<button data-f="forget" class="text-gray-500 hover:text-red-400">Xóa</button>':'<button data-f="flash" class="px-2 py-1 rounded bg-amber-600/80 hover:bg-amber-500 text-white">Nhận diện</button>'}</td></tr>`).join('');
+}
+document.getElementById('tabRows').addEventListener('change', async e => {
+  const tr = e.target.closest('tr'); if(!tr) return; const f = e.target.dataset.f, id = tr.dataset.id; let body = {};
+  if(f==='label') body.label = e.target.value; else if(f==='role') body.roles = Array.from(tr.querySelectorAll('input[data-f="role"]:checked')).map(x => x.value); else if(f==='limit') body.limit = e.target.value; else if(f==='paused') body.paused = e.target.checked; else return;
+  await fetch('/api/court/tab/'+encodeURIComponent(id), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); loadTabs(true);
+});
+document.getElementById('tabRows').addEventListener('click', async e => {
+  const f = e.target.dataset.f, tr = e.target.closest('tr'); if(!tr) return; const id = encodeURIComponent(tr.dataset.id);
+  if(f==='flash') await fetch('/api/court/tab/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({flash:true})});
+  else if(f==='reset') await fetch('/api/court/tab/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reset_done:true})});
+  else if(f==='forget') await fetch('/api/court/tab/'+id+'/forget', {method:'POST'}); else return;
+  loadTabs(true);
+});
+async function autoRoles(){ await fetch('/api/court/tabs/auto', {method:'POST'}); loadTabs(true); }
+setInterval(() => loadTabs(false), 1500);
+setInterval(status, 2000); setInterval(()=>load(false), 1000); status(); load(true);
+</script>
+</body>
+</html>

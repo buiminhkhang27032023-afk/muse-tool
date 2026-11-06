@@ -1,0 +1,7 @@
+data
+__pycache__
+court_runs.json
+court_tabs.json
+server.log
+*.bak
+.env
