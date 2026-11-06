@@ -7,7 +7,7 @@ Công cụ chat riêng kết nối đồng bộ trực tiếp với tab web **mu
 ## 🚀 Cách sử dụng siêu nhanh (3 bước)
 
 ### Bước 1: Khởi động Tool
-- Nhấp đúp vào file `run.bat` (hoặc chạy lệnh `python server.py` trong thư mục này).
+- Nhấp đúp vào file `run.bat` (hoặc chạy `npm start` trong thư mục `node/`). Bản chạy là Node.js; bản Python cũ ở gốc vẫn còn, chạy bằng `python server.py` nếu cần.
 - Trình duyệt sẽ tự động mở giao diện tại: **http://localhost:5000**
 
 ### Bước 2: Nối dây vào tab web muse.ai

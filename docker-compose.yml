@@ -1,6 +1,8 @@
 services:
   muse:
-    build: .
+    build:
+      context: .
+      dockerfile: node/Dockerfile
     restart: unless-stopped
     environment:
       MUSE_PASSWORD: ${MUSE_PASSWORD:?Hay dat MUSE_PASSWORD trong file .env}
